@@ -1,5 +1,3 @@
-from torch.utils.data import Dataset
-
 import json
 
 f = open('kaggle.json')
@@ -10,13 +8,23 @@ os.environ['KAGGLE_USERNAME'] = data['username']
 os.environ['KAGGLE_KEY'] = data['key']
 
 from kaggle.api.kaggle_api_extended import KaggleApi
+from torch.utils.data import Dataset
 import zipfile
 import shutil
 import glob
+
 import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+import cv2
+from PIL import Image
+
+import torch
+from torchvision.transforms import ToTensor, Normalize, Compose
 
 class AirbusDataset(Dataset):
-    def __init__(self, data_dir:str = 'data/airbus') -> None:
+    def __init__(self, data_dir:str = 'data/airbus', transform=None) -> None:
         super().__init__()
 
         self.data_dir = data_dir
@@ -24,18 +32,29 @@ class AirbusDataset(Dataset):
 
         self.filenames = glob.glob(os.path.join(self.data_dir, 'train_v2', "*.jpg"))
 
+        self.transform = transform
+        self.img_transform = Compose([
+                ToTensor(),
+                Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+            ])
+
     def __len__(self):
         return len(self.filenames)
     
     def __getitem__(self, index):
-        input = self.filenames[index]
-        file_id = input.split(" ")[-1]
+        image = self.filenames[index]
+        file_id = image.split("/")[-1]
 
         df = pd.read_csv(os.path.join(self.data_dir, 'train_ship_segmentations_v2.csv'))
-        output = df[df['ImageId'] == file_id]['EncodedPixels'].values.item()
+        mask = df[df['ImageId'] == file_id]['EncodedPixels']
 
-        return input, output
+        image = Image.open(image)
+        mask = self.masks_as_image(mask)
 
+        if self.transform is not None:
+            image, mask = self.transform(image, mask)
+
+        return self.img_transform(image), torch.from_numpy(mask).float()
 
     def prepare_data(self):
         data_path = os.path.join(self.data_dir, 'train_v2')
@@ -70,8 +89,59 @@ class AirbusDataset(Dataset):
         shutil.rmtree(os.path.join(self.data_dir, 'test_v2'))       # delete test data (cuz labels are not provided)
         
         print("Done!")
+
+    def rle_decode(self, mask_rle, shape=(768, 768)):
+        '''
+        mask_rle: run-length as string formated (start length)
+        shape: (height,width) of array to return 
+        Returns numpy array, 1 - mask, 0 - background
+        '''
+        s = mask_rle.split()
+        starts, lengths = [np.asarray(x, dtype=int) for x in (s[0:][::2], s[1:][::2])]
+        starts -= 1
+        ends = starts + lengths
+        img = np.zeros(shape[0]*shape[1], dtype=np.uint8)
+        for lo, hi in zip(starts, ends):
+            img[lo:hi] = 1
+        return img.reshape(shape).T  # Needed to align to RLE direction
+
+    def masks_as_image(self, in_mask_list):
+        # Take the individual ship masks and create a single mask array for all ships
+        all_masks = np.zeros((768, 768), dtype = np.uint8)
+        for mask in in_mask_list:
+            if isinstance(mask, str):
+                all_masks |= self.rle_decode(mask)
+        return all_masks
+
+    @staticmethod
+    def mask_overlay(image, mask, color=(0, 1, 0)):
+        """
+        Helper function to visualize mask on the top of the image
+        """
+        mask = np.dstack((mask, mask, mask)) * np.array(color)
+        weighted_sum = cv2.addWeighted(mask, 0.5, image, 0.5, 0.)
+        img = image.copy()
+        ind = mask[:, :, 1] > 0
+        img[ind] = weighted_sum[ind]    
+        return img
+
+    @staticmethod
+    def imshow(img, mask, title=None):
+        """Imshow for Tensor."""
+        img = img.numpy().transpose((1, 2, 0))
+        mean = np.array([0.485, 0.456, 0.406])
+        std = np.array([0.229, 0.224, 0.225])
+        img = std * img + mean
+        img = np.clip(img, 0, 1)
+        mask = mask.numpy()
+        fig = plt.figure(figsize = (6,6))
+        plt.imshow(AirbusDataset.mask_overlay(img, mask))
+        if title is not None:
+            plt.title(title)
+        plt.pause(5) 
             
 
 if __name__ == "__main__":
     airbus = AirbusDataset()
-    airbus.prepare_data()
+    AirbusDataset.imshow(*airbus[2])
+    
