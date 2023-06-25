@@ -1,4 +1,7 @@
-from typing import Any, Dict, Optional, Tuple
+import hydra
+from omegaconf import DictConfig, OmegaConf
+
+from typing import Optional, Tuple
 
 import torch
 from pytorch_lightning import LightningDataModule
@@ -8,7 +11,6 @@ from components.airbus import AirbusDataset
 from components.transform_airbus import TransformAirbus
 
 import albumentations as A
-from albumentations import Compose
 
 class AirbusDataModule(LightningDataModule):
     """Example of LightningDataModule for MNIST dataset.
@@ -105,14 +107,34 @@ class AirbusDataModule(LightningDataModule):
             shuffle=False,
         )
 
+@hydra.main(config_path='../../configs/data', config_name='airbus', version_base=None)
+def main(cfg: DictConfig):
+    print(OmegaConf.to_yaml(cfg))
 
-if __name__ == "__main__":   
-    airbus = AirbusDataModule()
+    airbus = hydra.utils.instantiate(cfg)
     airbus.setup()
 
     loader = airbus.test_dataloader()
     img, mask = next(iter(loader))
 
-    TransformAirbus.imshow(img, mask)
+    TransformAirbus.imshow_batch(img, mask)
+
+
+if __name__ == "__main__":  
+    import pyrootutils
+    from omegaconf import DictConfig
+    import hydra
+    import numpy as np
+    from PIL import Image, ImageDraw
+    from tqdm import tqdm
+
+    path = pyrootutils.find_root(
+        search_from=__file__, indicator=".project-root")
+    config_path = str(path / "configs" / "data")
+    output_path = path / "outputs"
+    print("root", path, config_path)
+    # pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
+ 
+    main()
 
 

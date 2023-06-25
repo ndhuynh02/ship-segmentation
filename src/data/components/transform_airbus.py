@@ -2,22 +2,23 @@ from torch.utils.data import Dataset
 from components.airbus import AirbusDataset
 
 import torch
-import torchvision
 
 import albumentations as A
 from albumentations import Compose
 from albumentations.pytorch.transforms import ToTensorV2
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Optional
 
 import numpy as np
 import matplotlib.pyplot as plt
-from PIL import Image
 
 class TransformAirbus(Dataset):
+    mean = None
+    std = None
+
     def __init__(self, dataset: AirbusDataset, transform: Optional[Compose] = None) -> None:
         super().__init__()
-    
+
         self.dataset = dataset
 
         if transform is not None:
@@ -47,7 +48,7 @@ class TransformAirbus(Dataset):
         return image, mask
 
     @staticmethod
-    def imshow(images, masks, title=None):
+    def imshow_batch(images, masks, title=None):
         IMG_MEAN = [0.485, 0.456, 0.406]
         IMG_STD = [0.229, 0.224, 0.225]
 
@@ -61,13 +62,16 @@ class TransformAirbus(Dataset):
 
         images = denormalize(images)
 
-        for mask, img in zip(masks, images):
+        fig = plt.figure(figsize=(8,8))
+
+        for i, (mask, img) in enumerate(zip(masks, images)):
+            if i >= 64:
+                break
             img = (img.permute(1, 2, 0).numpy() * 255).astype(np.uint8)
             mask = mask.numpy().astype(np.uint8)
 
-            fig = plt.figure(figsize = (6,6))
-            plt.imshow(AirbusDataset.mask_overlay(img, mask))
+            ax = fig.add_subplot(8, 8, i+1, xticks=[], yticks=[])
+            ax.imshow(AirbusDataset.mask_overlay(img, mask))
             if title is not None:
-                plt.title(title)
-            plt.pause(3) 
-            plt.close()
+                ax.set_title(title)
+        plt.show()
