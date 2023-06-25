@@ -30,7 +30,8 @@ class AirbusDataset(Dataset):
         self.data_dir = data_dir
         self.prepare_data()
 
-        self.filenames = glob.glob(os.path.join(self.data_dir, 'train_v2', "*.jpg"))
+        self.filenames = glob.glob(os.path.join(self.data_dir, 'train_v2', "*.jpg"))[:100]
+        self.dataframe = pd.read_csv(os.path.join(self.data_dir, 'train_ship_segmentations_v2.csv'))
 
         self.transform = transform
         self.img_transform = Compose([
@@ -45,8 +46,7 @@ class AirbusDataset(Dataset):
         image = self.filenames[index]
         file_id = image.split("/")[-1]
 
-        df = pd.read_csv(os.path.join(self.data_dir, 'train_ship_segmentations_v2.csv'))
-        mask = df[df['ImageId'] == file_id]['EncodedPixels']
+        mask = self.dataframe[self.dataframe['ImageId'] == file_id]['EncodedPixels']
 
         image = Image.open(image)
         mask = self.masks_as_image(mask)
@@ -143,5 +143,9 @@ class AirbusDataset(Dataset):
 
 if __name__ == "__main__":
     airbus = AirbusDataset()
-    AirbusDataset.imshow(*airbus[2])
+    img, mask = airbus[2]
+    print(img.shape)
+    print(mask.shape)
+
+    AirbusDataset.imshow(img, mask)
     
