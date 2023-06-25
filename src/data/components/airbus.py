@@ -20,24 +20,15 @@ import matplotlib.pyplot as plt
 import cv2
 from PIL import Image
 
-import torch
-from torchvision.transforms import ToTensor, Normalize, Compose
-
 class AirbusDataset(Dataset):
-    def __init__(self, data_dir:str = 'data/airbus', transform=None) -> None:
+    def __init__(self, data_dir:str = 'data/airbus') -> None:
         super().__init__()
 
         self.data_dir = data_dir
         self.prepare_data()
 
-        self.filenames = glob.glob(os.path.join(self.data_dir, 'train_v2', "*.jpg"))[:100]
+        self.filenames = glob.glob(os.path.join(self.data_dir, 'train_v2', "*.jpg"))
         self.dataframe = pd.read_csv(os.path.join(self.data_dir, 'train_ship_segmentations_v2.csv'))
-
-        self.transform = transform
-        self.img_transform = Compose([
-                ToTensor(),
-                Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-            ])
 
     def __len__(self):
         return len(self.filenames)
@@ -48,13 +39,10 @@ class AirbusDataset(Dataset):
 
         mask = self.dataframe[self.dataframe['ImageId'] == file_id]['EncodedPixels']
 
-        image = Image.open(image)
+        image = Image.open(image).convert('RGB')
         mask = self.masks_as_image(mask)
 
-        if self.transform is not None:
-            image, mask = self.transform(image, mask)
-
-        return self.img_transform(image), torch.from_numpy(mask).float()
+        return np.array(image, dtype=np.uint8), mask
 
     def prepare_data(self):
         data_path = os.path.join(self.data_dir, 'train_v2')
@@ -118,7 +106,7 @@ class AirbusDataset(Dataset):
         """
         Helper function to visualize mask on the top of the image
         """
-        mask = np.dstack((mask, mask, mask)) * np.array(color)
+        mask = np.dstack((mask, mask, mask)) * np.array(color, dtype=np.uint8) * 255
         weighted_sum = cv2.addWeighted(mask, 0.5, image, 0.5, 0.)
         img = image.copy()
         ind = mask[:, :, 1] > 0
@@ -127,13 +115,6 @@ class AirbusDataset(Dataset):
 
     @staticmethod
     def imshow(img, mask, title=None):
-        """Imshow for Tensor."""
-        img = img.numpy().transpose((1, 2, 0))
-        mean = np.array([0.485, 0.456, 0.406])
-        std = np.array([0.229, 0.224, 0.225])
-        img = std * img + mean
-        img = np.clip(img, 0, 1)
-        mask = mask.numpy()
         fig = plt.figure(figsize = (6,6))
         plt.imshow(AirbusDataset.mask_overlay(img, mask))
         if title is not None:

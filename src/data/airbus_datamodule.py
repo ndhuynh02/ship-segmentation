@@ -5,7 +5,10 @@ from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset, random_split
 
 from components.airbus import AirbusDataset
+from components.transform_airbus import TransformAirbus
 
+import albumentations as A
+from albumentations import Compose
 
 class AirbusDataModule(LightningDataModule):
     """Example of LightningDataModule for MNIST dataset.
@@ -39,6 +42,8 @@ class AirbusDataModule(LightningDataModule):
         self,
         data_dir: str = "data/airbus",
         train_val_test_split: Tuple[int, int, int] = (0.8, 0.1, 0.1),
+        transform_train: Optional[A.Compose] = None,
+        transform_val: Optional[A.Compose] = None,
         batch_size: int = 64,
         num_workers: int = 0,
         pin_memory: bool = False,
@@ -69,6 +74,10 @@ class AirbusDataModule(LightningDataModule):
                 generator=torch.Generator().manual_seed(42),
             )
 
+            self.data_train = TransformAirbus(self.data_train, self.hparams.transform_train)
+            self.data_val = TransformAirbus(self.data_val, self.hparams.transform_val)
+            self.data_test = TransformAirbus(self.data_test, self.hparams.transform_val)
+
     def train_dataloader(self):
         return DataLoader(
             dataset=self.data_train,
@@ -97,16 +106,13 @@ class AirbusDataModule(LightningDataModule):
         )
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":   
     airbus = AirbusDataModule()
     airbus.setup()
 
     loader = airbus.test_dataloader()
     img, mask = next(iter(loader))
 
-    print("Image shape:", img.shape)
-    print("Mask shape:", mask.shape)
-
-    AirbusDataset.imshow(img[0], mask[0])
+    TransformAirbus.imshow(img, mask)
 
 
