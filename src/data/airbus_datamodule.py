@@ -7,8 +7,8 @@ import torch
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, Dataset, random_split
 
-from components.airbus import AirbusDataset
-from components.transform_airbus import TransformAirbus
+from src.data.components.airbus import AirbusDataset
+from src.data.components.transform_airbus import TransformAirbus
 
 import albumentations as A
 
@@ -107,34 +107,29 @@ class AirbusDataModule(LightningDataModule):
             shuffle=False,
         )
 
-@hydra.main(config_path='../../configs/data', config_name='airbus', version_base=None)
-def main(cfg: DictConfig):
-    print(OmegaConf.to_yaml(cfg))
-
-    airbus = hydra.utils.instantiate(cfg)
-    airbus.setup()
-
-    loader = airbus.test_dataloader()
-    img, mask = next(iter(loader))
-
-    TransformAirbus.imshow_batch(img, mask)
-
 
 if __name__ == "__main__":  
     import pyrootutils
     from omegaconf import DictConfig
     import hydra
-    import numpy as np
-    from PIL import Image, ImageDraw
-    from tqdm import tqdm
 
     path = pyrootutils.find_root(
         search_from=__file__, indicator=".project-root")
-    config_path = str(path / "configs" / "data")
+    config_path = str(path / "configs")
     output_path = path / "outputs"
-    print("root", path, config_path)
-    # pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
+    print(f'config_path: {config_path}')
+    pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
  
+    @hydra.main(version_base="1.3", config_path=config_path, config_name='train.yaml')
+    def main(cfg: DictConfig):
+        print(OmegaConf.to_yaml(cfg.data, resolve=True))
+
+        airbus = hydra.utils.instantiate(cfg.data)
+        airbus.setup()
+
+        loader = airbus.test_dataloader()
+        img, mask = next(iter(loader))
+
+        TransformAirbus.imshow_batch(img, mask)
+
     main()
-
-

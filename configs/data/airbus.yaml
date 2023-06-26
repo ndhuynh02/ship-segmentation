@@ -1,13 +1,12 @@
-_target_: airbus_datamodule.AirbusDataModule
+_target_: src.data.airbus_datamodule.AirbusDataModule
 
 defaults:
   - transform_train: default.yaml
   - transform_val: default.yaml
 
-# data_dir: ${paths.data_dir}/airbus
-data_dir: data/airbus
-batch_size: 64
+data_dir: ${paths.data_dir}/airbus
+batch_size: 1 
 train_val_test_split: [0.8, 0.1, 0.1]
-num_workers: 0
+num_workers: 8
 pin_memory: False
 
