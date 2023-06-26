@@ -1,5 +1,5 @@
 from torch.utils.data import Dataset
-from components.airbus import AirbusDataset
+from src.data.components.airbus import AirbusDataset
 
 import torch
 
@@ -33,7 +33,7 @@ class TransformAirbus(Dataset):
         return len(self.dataset)
 
     def __getitem__(self, index) -> Any:
-        image, mask = self.dataset[index]
+        image, mask = self.dataset[index] # (768, 768, 3), (768, 768)
 
         # fig, (ax1, ax2) = plt.subplots(1, 2)
         # ax1.imshow(image)
@@ -42,8 +42,9 @@ class TransformAirbus(Dataset):
 
         if self.transform is not None:
             transformed = self.transform(image=image, mask=mask)
-            image = transformed['image']
-            mask = transformed['mask']
+            image = transformed['image'] # (3, 768, 768)
+            mask = transformed['mask'] # (768, 768), uint8
+            mask = mask.unsqueeze(0).float() # (1, 768, 768)
 
         return image, mask
 
