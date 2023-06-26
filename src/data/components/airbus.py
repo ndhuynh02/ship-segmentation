@@ -103,6 +103,7 @@ class AirbusDataset(Dataset):
         """
         Helper function to visualize mask on the top of the image
         """
+        mask = mask.squeeze() # mask could be (1, 768, 768) or (768, 768)
         mask = np.dstack((mask, mask, mask)) * np.array(color, dtype=np.uint8) * 255
         weighted_sum = cv2.addWeighted(mask, 0.5, image, 0.5, 0.)
         img = image.copy()
