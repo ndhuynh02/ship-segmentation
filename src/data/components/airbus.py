@@ -47,11 +47,8 @@ class AirbusDataset(Dataset):
     def prepare_data(self):
         data_path = os.path.join(self.data_dir, 'train_v2')
         if (os.path.exists(data_path)):
-            if (len(os.listdir(data_path)) == 192556):
-                print("Data is downloaded")
-                return
-            else:
-                shutil.rmtree(self.data_dir)
+            print("Data is downloaded")
+            return
 
         api = KaggleApi()
         api.authenticate()
