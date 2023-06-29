@@ -70,9 +70,14 @@ class AirbusDataModule(LightningDataModule):
         if not self.data_train and not self.data_val and not self.data_test:
             dataset = AirbusDataset(data_dir=self.hparams.data_dir)
 
+            data_len = len(dataset)
+            train_len = int(data_len * self.hparams.train_val_test_split[0])
+            val_len = int(data_len * self.hparams.train_val_test_split[1])
+            test_len = data_len - train_len - val_len
+
             self.data_train, self.data_val, self.data_test = random_split(
                 dataset=dataset,
-                lengths=self.hparams.train_val_test_split,
+                lengths=[train_len, val_len, test_len],
                 generator=torch.Generator().manual_seed(42),
             )
 

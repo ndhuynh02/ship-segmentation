@@ -1,0 +1,21 @@
+version: '3.8'
+services:
+  api:
+    build: .
+    volumes:
+      - airbus_data:/workspace/data
+    ports:
+      - 8080:8080
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    stdin_open: true # docker run -i
+    tty: true        # docker run -t
+    
+volumes:
+  airbus_data:
+    external: true
