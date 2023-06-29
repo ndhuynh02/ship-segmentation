@@ -6,10 +6,15 @@ WORKDIR /workspace
 # Copy requirements.txt and install dependencies
 COPY requirements_for_docker.txt .
 
-RUN apt-get update && pip install --upgrade pip 
-RUN apt-get install -y git
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y git && \
+    pip install --upgrade pip 
 
 RUN pip install --no-cache-dir -r requirements_for_docker.txt
+
+# Install dependencies for cv2
+RUN apt-get install ffmpeg libsm6 libxext6  -y
 
 # Copy the rest of the files
 COPY . .
