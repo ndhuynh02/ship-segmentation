@@ -29,6 +29,7 @@ class AirbusDataset(Dataset):
 
         self.filenames = glob.glob(os.path.join(self.data_dir, 'train_v2', "*.jpg"))
         self.dataframe = pd.read_csv(os.path.join(self.data_dir, 'train_ship_segmentations_v2.csv'))
+        self.dataframe.dropna()
 
     def __len__(self):
         return len(self.filenames)
@@ -36,9 +37,7 @@ class AirbusDataset(Dataset):
     def __getitem__(self, index):
         image = self.filenames[index]
         file_id = image.split("/")[-1]
-
         mask = self.dataframe[self.dataframe['ImageId'] == file_id]['EncodedPixels']
-
         image = Image.open(image).convert('RGB')
         mask = self.masks_as_image(mask)
 
@@ -122,7 +121,7 @@ class AirbusDataset(Dataset):
 
 if __name__ == "__main__":
     airbus = AirbusDataset()
-    img, mask = airbus[2]
+    img, mask= airbus[2]
     print(img.shape)
     print(mask.shape)
 

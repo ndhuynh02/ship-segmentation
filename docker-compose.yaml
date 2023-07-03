@@ -2,10 +2,18 @@ version: '3.8'
 services:
   api:
     build: .
+    image: ship_detector_hung # image name
+    container_name: ship_detector_hung # container name
     volumes:
       - airbus_data:/workspace/data
     ports:
       - 8080:8080
+    shm_size: '2gb'  # set the shared memory size to 2GB
+    ulimits:
+      memlock: # unlimited
+        soft: -1 
+        hard: -1
+      stack: 67108864 # stack size limit
     deploy:
       resources:
         reservations:
