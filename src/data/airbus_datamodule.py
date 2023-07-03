@@ -43,7 +43,7 @@ class AirbusDataModule(LightningDataModule):
     def __init__(
         self,
         data_dir: str = "data/airbus",
-        train_val_test_split: Tuple[int, int, int] = (0.8, 0.1, 0.1),
+        train_val_test_split: Tuple[int, int, int] = (0.3, 0.05, 0.05),
         transform_train: Optional[A.Compose] = None,
         transform_val: Optional[A.Compose] = None,
         batch_size: int = 64,
