@@ -29,11 +29,12 @@ class AirbusDataset(Dataset):
 
         self.dataframe = pd.read_csv(os.path.join(self.data_dir, 'train_ship_segmentations_v2.csv'))
         self = self.dataframe.dropna()
+
         # Get the 'ImageId' column values
         image_ids = self.dataframe['ImageId'].values
 
         # Filter 'self.filenames' based on 'ImageId' column values
-        self.filenames = [os.path.join(self.data_dir, 'train_v2', image_id + '.jpg') for image_id in image_ids]
+        self.filenames = [os.path.join(self.data_dir, 'train_v2', image_id) for image_id in image_ids]
 
     def __len__(self):
         return len(self.filenames)
@@ -127,6 +128,7 @@ if __name__ == "__main__":
     airbus = AirbusDataset()
     img, mask= airbus[2]
     print(len(airbus.filenames))
+    print(len(airbus.dataframe))
 
     AirbusDataset.imshow(img, mask)
     
