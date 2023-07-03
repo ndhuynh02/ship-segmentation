@@ -2,6 +2,8 @@ version: '3.8'
 services:
   api:
     build: .
+    image: ship-test-image # image name
+    container_name: ship-test-name # container name
     volumes:
       - airbus_data:/workspace/data
     ports:
