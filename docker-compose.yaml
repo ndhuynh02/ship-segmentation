@@ -8,6 +8,12 @@ services:
       - airbus_data:/workspace/data
     ports:
       - 8080:8080
+    shm_size: '2gb'  # set the shared memory size to 2GB
+    ulimits:
+      memlock: # unlimited
+        soft: -1 
+        hard: -1
+      stack: 67108864 # stack size limit
     deploy:
       resources:
         reservations:
