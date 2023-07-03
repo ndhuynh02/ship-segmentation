@@ -29,7 +29,7 @@ class AirbusDataset(Dataset):
 
         self.filenames = glob.glob(os.path.join(self.data_dir, 'train_v2', "*.jpg"))
         self.dataframe = pd.read_csv(os.path.join(self.data_dir, 'train_ship_segmentations_v2.csv'))
-        self.dataframe.dropna()
+        self = self.dataframe.dropna()
 
     def __len__(self):
         return len(self.filenames)
