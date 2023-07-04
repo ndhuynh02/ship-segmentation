@@ -50,6 +50,8 @@ class AirbusDataModule(LightningDataModule):
         batch_size: int = 64,
         num_workers: int = 0,
         pin_memory: bool = False,
+        undersample: int = 140000,
+        subset: int = 10000,
     ):
         super().__init__()
 
@@ -69,7 +71,7 @@ class AirbusDataModule(LightningDataModule):
         """
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
-            dataset = AirbusDataset(data_dir=self.hparams.data_dir)
+            dataset = AirbusDataset(data_dir=self.hparams.data_dir, undersample=self.hparams.undersample, subset=self.hparams.subset)
 
             # stratified split
             masks = dataset.dataframe
