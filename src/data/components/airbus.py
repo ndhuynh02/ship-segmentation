@@ -30,7 +30,11 @@ class AirbusDataset(Dataset):
         # self.filenames = glob.glob(os.path.join(self.data_dir, 'train_v2', "*.jpg"))
         self.dataframe = pd.read_csv(os.path.join(self.data_dir, 'train_ship_segmentations_v2.csv'))
         self.dataframe = self.dataframe.drop(self.dataframe[self.dataframe.EncodedPixels.isnull()].sample(120000,random_state=42).index)
-        self.filenames = self.dataframe['ImageId'].unique()
+        self.fileids = self.dataframe['ImageId'].unique()
+        self.filenames = []
+        for fileid in self.fileids:
+            item = os.path.join(self.data_dir, 'train_v2', fileid)
+            self.filenames.append(item)
 
     def __len__(self):
         return len(self.filenames)
@@ -41,7 +45,7 @@ class AirbusDataset(Dataset):
 
         mask = self.dataframe[self.dataframe['ImageId'] == file_id]['EncodedPixels']
 
-        image = Image.open(os.path.join(self.data_dir, 'train_v2', image)).convert('RGB')
+        image = Image.open(image).convert('RGB')
         mask = self.masks_as_image(mask)
 
         return np.array(image, dtype=np.uint8), mask
