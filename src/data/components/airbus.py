@@ -27,14 +27,16 @@ class AirbusDataset(Dataset):
         self.data_dir = data_dir
         self.prepare_data()
 
-        # self.filenames = glob.glob(os.path.join(self.data_dir, 'train_v2', "*.jpg"))
+        self.filenames = glob.glob(os.path.join(self.data_dir, 'train_v2', "*.jpg"))
         self.dataframe = pd.read_csv(os.path.join(self.data_dir, 'train_ship_segmentations_v2.csv'))
-        self.dataframe = self.dataframe.drop(self.dataframe[self.dataframe.EncodedPixels.isnull()].sample(120000,random_state=42).index)
-        self.fileids = self.dataframe['ImageId'].unique()
-        self.filenames = []
-        for fileid in self.fileids:
-            item = os.path.join(self.data_dir, 'train_v2', fileid)
-            self.filenames.append(item)
+        # self.filenames = self.filenames[:100]
+        # self.dataframe = self.dataframe.drop(self.dataframe[self.dataframe.EncodedPixels.isnull()].sample(120000,random_state=42).index)
+        # self.fileids = self.dataframe['ImageId'].unique()
+        # self.fileids = self.fileids[:80]
+        # self.filenames = []
+        # for fileid in self.fileids:
+        #     item = os.path.join(self.data_dir, 'train_v2', fileid)
+        #     self.filenames.append(item)
 
     def __len__(self):
         return len(self.filenames)
