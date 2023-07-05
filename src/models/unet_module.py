@@ -8,6 +8,13 @@ from torchmetrics.classification.accuracy import Accuracy
 from src.models.components.loss_binary import LossBinary
 from torchmetrics import JaccardIndex
 
+import pandas as pd
+import numpy as np
+import os
+from PIL import Image
+from src.data.components.airbus import AirbusDataset
+
+from src.utils.airbus_utils import mask_overlay, masks_as_image
 
 class UNetLitModule(LightningModule):
     """Example of LightningModule for MNIST classification.
@@ -63,6 +70,16 @@ class UNetLitModule(LightningModule):
         self.val_loss.reset()
         self.val_metric.reset()
         self.val_metric_best.reset()
+
+        file_id ='003b48a9e.jpg'
+        image = os.path.join('data/airbus/train_v2', file_id)
+        self.sample_image = np.array(Image.open(image).convert('RGB'))
+
+        dataframe = pd.read_csv('data/airbus/train_ship_segmentations_v2.csv')
+        self.sample_mask = dataframe[dataframe['ImageId'] == file_id]['EncodedPixels']
+        self.sample_mask = masks_as_image(self.sample_mask)
+
+        self.logger.log_image(key='real images', images=[Image.fromarray(mask_overlay(self.sample_image, self.sample_mask))])
 
     def model_step(self, batch: Any):
         x, y = batch
