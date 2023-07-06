@@ -18,7 +18,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import cv2
-from PIL import Image
+from PIL import Image, ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 class AirbusDataset(Dataset):
     def __init__(self, data_dir:str = 'data/airbus') -> None:
@@ -28,18 +29,20 @@ class AirbusDataset(Dataset):
         self.prepare_data()
 
         self.filenames = glob.glob(os.path.join(self.data_dir, 'train_v2', "*.jpg"))
+
         self.dataframe = pd.read_csv(os.path.join(self.data_dir, 'train_ship_segmentations_v2.csv'))
+        self.dataframe = self.dataframe.dropna()
+        self.dataframe['EncodedPixels'] = self.dataframe['EncodedPixels'].astype(str)
+        self.dataframe = self.dataframe.groupby('ImageId')['EncodedPixels'].apply(lambda x: '/'.join(x)).reset_index()
 
     def __len__(self):
-        return len(self.filenames)
+        return len(self.dataframe)
     
     def __getitem__(self, index):
-        image = self.filenames[index]
-        file_id = image.split("/")[-1]
+        mask = self.dataframe['EncodedPixels'][index].split('/')
+        image = self.dataframe['ImageId'][index]
 
-        mask = self.dataframe[self.dataframe['ImageId'] == file_id]['EncodedPixels']
-
-        image = Image.open(image).convert('RGB')
+        image = Image.open(os.path.join(self.data_dir, 'train_v2', image)).convert('RGB')
         mask = self.masks_as_image(mask)
 
         return np.array(image, dtype=np.uint8), mask
