@@ -71,15 +71,15 @@ class UNetLitModule(LightningModule):
         self.val_metric.reset()
         self.val_metric_best.reset()
 
-        file_id ='003b48a9e.jpg'
-        image = os.path.join('data/airbus/train_v2', file_id)
-        self.sample_image = np.array(Image.open(image).convert('RGB'))
+        # file_id ='003b48a9e.jpg'
+        # image = os.path.join('data/airbus/train_v2', file_id)
+        # self.sample_image = np.array(Image.open(image).convert('RGB'))
 
-        dataframe = pd.read_csv('data/airbus/train_ship_segmentations_v2.csv')
-        self.sample_mask = dataframe[dataframe['ImageId'] == file_id]['EncodedPixels']
-        self.sample_mask = masks_as_image(self.sample_mask)
+        # dataframe = pd.read_csv('data/airbus/train_ship_segmentations_v2.csv')
+        # self.sample_mask = dataframe[dataframe['ImageId'] == file_id]['EncodedPixels']
+        # self.sample_mask = masks_as_image(self.sample_mask)
 
-        self.logger.log_image(key='real images', images=[Image.fromarray(mask_overlay(self.sample_image, self.sample_mask))])
+        # self.logger.log_image(key='real images', images=[Image.fromarray(mask_overlay(self.sample_image, self.sample_mask))])
 
     def model_step(self, batch: Any):
         x, y = batch
