@@ -22,18 +22,30 @@ from PIL import Image, ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 class AirbusDataset(Dataset):
-    def __init__(self, data_dir:str = 'data/airbus') -> None:
+    def __init__(self, data_dir:str = 'data/airbus', undersample:int = 1400, subset:int = 500) -> None:
         super().__init__()
 
         self.data_dir = data_dir
         self.prepare_data()
 
-        self.filenames = glob.glob(os.path.join(self.data_dir, 'train_v2', "*.jpg"))
+        masks = pd.read_csv(os.path.join(self.data_dir, 'train_ship_segmentations_v2.csv'))
 
-        self.dataframe = pd.read_csv(os.path.join(self.data_dir, 'train_ship_segmentations_v2.csv'))
-        self.dataframe = self.dataframe.dropna()
-        self.dataframe['EncodedPixels'] = self.dataframe['EncodedPixels'].astype(str)
-        self.dataframe = self.dataframe.groupby('ImageId')['EncodedPixels'].apply(lambda x: '/'.join(x)).reset_index()
+        # undersample non-ship images
+        if undersample != 0:
+            self.dataframe = masks.drop(masks[masks.EncodedPixels.isnull()].sample(undersample, random_state=42).index)
+        else: 
+            self.dataframe = masks
+
+        image_ids = self.dataframe['ImageId'].unique()
+        self.filenames = [os.path.join(self.data_dir, "train_v2", image_id) for image_id in image_ids]
+
+        # use subset of data 
+        if subset != 0:
+            image_ids_subset = image_ids[:subset].tolist()
+            self.filenames = [os.path.join(self.data_dir, "train_v2", image_id) for image_id in image_ids_subset]
+            self.dataframe = self.dataframe[self.dataframe['ImageId'].isin(image_ids_subset)].reset_index(drop=True)
+            assert len(self.filenames) == self.dataframe['ImageId'].nunique(), \
+                "The number of filenames does not match the number of unique ImageIds"
 
     def __len__(self):
         return len(self.dataframe)

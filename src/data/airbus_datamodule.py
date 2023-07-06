@@ -5,7 +5,8 @@ from typing import Optional, Tuple
 
 import torch
 from pytorch_lightning import LightningDataModule
-from torch.utils.data import DataLoader, Dataset, random_split
+from torch.utils.data import DataLoader, Dataset, Subset
+from sklearn.model_selection import train_test_split
 
 from src.data.components.airbus import AirbusDataset
 from src.data.components.transform_airbus import TransformAirbus
@@ -49,6 +50,8 @@ class AirbusDataModule(LightningDataModule):
         batch_size: int = 64,
         num_workers: int = 0,
         pin_memory: bool = False,
+        undersample: int = 140000,
+        subset: int = 10000,
     ):
         super().__init__()
 
@@ -60,7 +63,7 @@ class AirbusDataModule(LightningDataModule):
         self.data_val: Optional[Dataset] = None
         self.data_test: Optional[Dataset] = None
 
-    def setup(self, stage: Optional[str] = None):
+    def setup(self, visualize_dist=False, stage: Optional[str] = None):
         """Load data. Set variables: `self.data_train`, `self.data_val`, `self.data_test`.
 
         This method is called by lightning with both `trainer.fit()` and `trainer.test()`, so be
@@ -68,22 +71,76 @@ class AirbusDataModule(LightningDataModule):
         """
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
-            dataset = AirbusDataset(data_dir=self.hparams.data_dir)
+            dataset = AirbusDataset(data_dir=self.hparams.data_dir, undersample=self.hparams.undersample, subset=self.hparams.subset)
 
-            data_len = len(dataset)
-            train_len = int(data_len * self.hparams.train_val_test_split[0])
-            val_len = int(data_len * self.hparams.train_val_test_split[1])
-            test_len = data_len - train_len - val_len
+            # stratified split
+            masks = dataset.dataframe
+            unique_img_ids = masks.groupby(
+                'ImageId').size().reset_index(name='counts') # cols: ImageId & counts
+            train_ids, valid_and_test_ids = train_test_split(unique_img_ids,
+                                                             train_size=self.hparams.train_val_test_split[0],
+                                                             stratify=unique_img_ids['counts'],
+                                                             shuffle=True,
+                                                             random_state=42
+                                                             )
+            val_ids, test_ids = train_test_split(valid_and_test_ids,
+                                                   train_size=self.hparams.train_val_test_split[1] / (
+                                                       self.hparams.train_val_test_split[1] + self.hparams.train_val_test_split[2]),
+                                                   stratify=valid_and_test_ids['counts'],
+                                                   shuffle=True,
+                                                   random_state=42
+                                                   )
+            assert len(train_ids) + len(val_ids) + len(test_ids) == len(unique_img_ids)
 
-            self.data_train, self.data_val, self.data_test = random_split(
-                dataset=dataset,
-                lengths=[train_len, val_len, test_len],
-                generator=torch.Generator().manual_seed(42),
-            )
+            if visualize_dist: self.visualize_dist(masks, train_ids, val_ids, test_ids)
 
+            # get subset of dataset from indices
+            self.data_train = Subset(dataset, train_ids.index.to_list())
+            self.data_val = Subset(dataset, val_ids.index.to_list())
+            self.data_test = Subset(dataset, test_ids.index.to_list())
+
+            # create transform dataset from subset
             self.data_train = TransformAirbus(self.data_train, self.hparams.transform_train)
             self.data_val = TransformAirbus(self.data_val, self.hparams.transform_val)
             self.data_test = TransformAirbus(self.data_test, self.hparams.transform_val)
+
+    # visualize distribution of train, val & test
+    def visualize_dist(self, masks, train_ids, val_ids, test_ids):
+        import pandas as pd
+        import matplotlib.pyplot as plt
+
+        train_df = pd.merge(masks, train_ids)
+        val_df = pd.merge(masks, val_ids)
+        test_df = pd.merge(masks, test_ids)
+
+        # count number of times ImageId appear -> count number of ships in image
+        train_df['counts'] = train_df.apply(lambda c_row: c_row['counts'] if 
+                                isinstance(c_row['EncodedPixels'], str) else
+                                0, 1)
+        val_df['counts'] = val_df.apply(lambda c_row: c_row['counts'] if 
+                                isinstance(c_row['EncodedPixels'], str) else
+                                0, 1)
+        test_df['counts'] = test_df.apply(lambda c_row: c_row['counts'] if 
+                                isinstance(c_row['EncodedPixels'], str) else
+                                0, 1)
+
+        # Create a 1x3 subplot
+        fig, axs = plt.subplots(1, 3, figsize=(15, 5))
+
+        # Plot histogram for train_df
+        axs[0].hist(train_df['counts'], bins=15)
+        axs[0].set_title('Train Data')
+
+        # Plot histogram for val_df
+        axs[1].hist(val_df['counts'], bins=15)
+        axs[1].set_title('Validation Data')
+
+        # Plot histogram for test_df
+        axs[2].hist(test_df['counts'], bins=15)
+        axs[2].set_title('Test Data')
+
+        # Show the plot
+        plt.show()
 
     def train_dataloader(self):
         return DataLoader(
@@ -130,7 +187,7 @@ if __name__ == "__main__":
         print(OmegaConf.to_yaml(cfg.data, resolve=True))
 
         airbus = hydra.utils.instantiate(cfg.data)
-        airbus.setup()
+        airbus.setup(visualize_dist=False) # set visualize_dist to True to see distribution of train, val & test set
 
         loader = airbus.test_dataloader()
         img, mask = next(iter(loader))
