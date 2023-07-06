@@ -15,6 +15,7 @@ from PIL import Image
 import albumentations as A
 from albumentations import Compose
 from albumentations.pytorch.transforms import ToTensorV2
+import torch
 
 from src.utils.airbus_utils import mask_overlay, masks_as_image
 
@@ -35,16 +36,20 @@ class WandbCallback(Callback):
 
     def on_train_start(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"):
         wandb_logger = trainer.logger 
-        wandb_logger.log_image(key='real images', images=[Image.fromarray(mask_overlay(self.sample_image, self.sample_mask))])
+        wandb_logger.log_image(key='real mask', images=[Image.fromarray(mask_overlay(self.sample_image, self.sample_mask))])
 
     def on_train_epoch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"):
         transformed = self.transform(image=self.sample_image)
         image = transformed['image'] # (3, 768, 768)
-        print(trainer.model.device)
         image = image.unsqueeze(0).to(trainer.model.device) # (1, 3, 768, 768)
 
-        fake = trainer.model(image)
-        fake = fake.detach()
+        pred_mask = trainer.model(image)
+        pred_mask = pred_mask.detach() # (1, 1, 768, 768)
         
-        print(fake.shape)
-        print(fake)
+        pred_mask = torch.sigmoid(pred_mask)
+        pred_mask = (pred_mask >= 0.5)
+        pred_mask = pred_mask.cpu().numpy().astype(np.uint8)
+
+        wandb_logger = trainer.logger 
+        wandb_logger.log_image(key='predicted mask', images=[Image.fromarray(mask_overlay(self.sample_image, pred_mask))])
+        
