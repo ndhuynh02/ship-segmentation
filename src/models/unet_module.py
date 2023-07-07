@@ -8,6 +8,13 @@ from torchmetrics.classification.accuracy import Accuracy
 from src.models.components.loss_binary import LossBinary
 from torchmetrics import JaccardIndex
 
+import pandas as pd
+import numpy as np
+import os
+from PIL import Image
+from src.data.components.airbus import AirbusDataset
+
+from src.utils.airbus_utils import mask_overlay, masks_as_image
 
 class UNetLitModule(LightningModule):
     """Example of LightningModule for MNIST classification.

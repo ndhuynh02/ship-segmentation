@@ -13,6 +13,8 @@ from src.data.components.transform_airbus import TransformAirbus
 
 import albumentations as A
 
+from src.utils.airbus_utils import imshow_batch
+
 class AirbusDataModule(LightningDataModule):
     """Example of LightningDataModule for MNIST dataset.
 
@@ -205,6 +207,6 @@ if __name__ == "__main__":
         loader = airbus.test_dataloader()
         img, mask = next(iter(loader))
 
-        TransformAirbus.imshow_batch(img, mask)
+        imshow_batch(img, mask)
 
     main()
