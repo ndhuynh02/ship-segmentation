@@ -1,6 +1,6 @@
 # @package _global_
 
-tm# specify here default configuration
+# specify here default configuration
 # order of defaults determines the order in which configs override each other
 defaults:
   - _self_

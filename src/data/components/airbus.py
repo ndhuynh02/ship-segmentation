@@ -28,14 +28,14 @@ class AirbusDataset(Dataset):
         self.prepare_data()
 
         self.dataframe = pd.read_csv(os.path.join(self.data_dir, 'train_ship_segmentations_v2.csv'))
-        self = self.dataframe.dropna()
+        self.dataframe = self.dataframe.dropna()
 
         # Get the 'ImageId' column values
         image_ids = self.dataframe['ImageId'].values
 
         # Filter 'self.filenames' based on 'ImageId' column values
         self.filenames = [os.path.join(self.data_dir, 'train_v2', image_id) for image_id in image_ids]
-
+        self.filenames = list(dict.fromkeys(self.filenames))
     def __len__(self):
         return len(self.filenames)
     
