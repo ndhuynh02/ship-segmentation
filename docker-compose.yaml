@@ -1,0 +1,29 @@
+version: '3.8'
+services:
+  api:
+    build: .
+    image: ship-test-image # image name
+    container_name: ship-test-name # container name
+    volumes:
+      - airbus_data:/workspace/data
+    ports:
+      - 8080:8080
+    shm_size: '2gb'  # set the shared memory size to 2GB
+    ulimits:
+      memlock: # unlimited
+        soft: -1 
+        hard: -1
+      stack: 67108864 # stack size limit
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    stdin_open: true # docker run -i
+    tty: true        # docker run -t
+    
+volumes:
+  airbus_data:
+    external: true
