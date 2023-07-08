@@ -7,12 +7,16 @@ class LossBinary:
         Implementation from  https://github.com/ternaus/robot-surgery-segmentation
     """
 
-    def __init__(self, jaccard_weight=0):
-        self.nll_loss = BCEWithLogitsLoss()
+    def __init__(self, jaccard_weight=0, pos_weight: torch.FloatTensor = None):
+        self.nll_loss = BCEWithLogitsLoss(pos_weight=pos_weight)
         self.jaccard_weight = jaccard_weight
 
+    def update_pos_weight(self, pos_weight: torch.FloatTensor = None):
+        if(pos_weight is not None):
+            self.nll_loss.pos_weight = pos_weight
+
     def __call__(self, outputs, targets):
-        loss = self.nll_loss(outputs, targets)
+        loss = (1 - self.jaccard_weight) * self.nll_loss(outputs, targets)
 
         if self.jaccard_weight:
             eps = 1e-15

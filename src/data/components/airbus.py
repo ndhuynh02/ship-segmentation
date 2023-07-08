@@ -48,13 +48,15 @@ class AirbusDataset(Dataset):
                 "The number of filenames does not match the number of unique ImageIds"
 
     def __len__(self):
-        return len(self.dataframe)
+        return len(self.filenames)
     
     def __getitem__(self, index):
-        mask = self.dataframe['EncodedPixels'][index].split('/')
-        image = self.dataframe['ImageId'][index]
+        image = self.filenames[index]
+        file_id = image.split("/")[-1]
 
-        image = Image.open(os.path.join(self.data_dir, 'train_v2', image)).convert('RGB')
+        mask = self.dataframe[self.dataframe['ImageId'] == file_id]['EncodedPixels']
+
+        image = Image.open(image).convert('RGB')
         mask = self.masks_as_image(mask)
 
         return np.array(image, dtype=np.uint8), mask

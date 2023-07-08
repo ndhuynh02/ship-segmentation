@@ -39,7 +39,7 @@ class UNetLitModule(LightningModule):
         self.net = net
 
         # loss function
-        self.criterion = LossBinary(jaccard_weight=5)
+        self.criterion = LossBinary(jaccard_weight=0.5, pos_weight=torch.FloatTensor([1.0]).to(device="cuda"))
 
         # metric objects for calculating and averaging accuracy across batches
         self.train_metric = JaccardIndex(task="binary", num_classes=2)
@@ -66,6 +66,15 @@ class UNetLitModule(LightningModule):
 
     def model_step(self, batch: Any):
         x, y = batch
+
+        cnt1 = (y==1).sum().item() # count number of class 1 in image
+        cnt0 = 768*768 - cnt1
+        if cnt1 != 0:
+            BCE_pos_weight = torch.FloatTensor([1.0 * cnt0 / cnt1]).to(device="cuda")
+        else:
+            BCE_pos_weight = torch.FloatTensor([1.0]).to(device="cuda")
+        self.criterion.update_pos_weight(pos_weight=BCE_pos_weight)
+
         preds = self.forward(x)
         loss = self.criterion(preds, y)
         return loss, preds, y
