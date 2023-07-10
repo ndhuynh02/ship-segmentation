@@ -13,6 +13,8 @@ from src.data.components.transform_airbus import TransformAirbus
 
 import albumentations as A
 
+from src.utils.airbus_utils import imshow_batch
+
 class AirbusDataModule(LightningDataModule):
     """Example of LightningDataModule for MNIST dataset.
 
@@ -77,19 +79,24 @@ class AirbusDataModule(LightningDataModule):
             masks = dataset.dataframe
             unique_img_ids = masks.groupby(
                 'ImageId').size().reset_index(name='counts') # cols: ImageId & counts
+            if (self.hparams.subset < 3000):
+                stratify = False
+            else: 
+                stratify = unique_img_ids['counts']
+
             train_ids, valid_and_test_ids = train_test_split(unique_img_ids,
-                                                             train_size=self.hparams.train_val_test_split[0],
-                                                             stratify=unique_img_ids['counts'],
-                                                             shuffle=True,
-                                                             random_state=42
-                                                             )
+                                                            train_size=self.hparams.train_val_test_split[0],
+                                                            stratify=stratify,
+                                                            shuffle=True,
+                                                            random_state=42
+                                                            )
             val_ids, test_ids = train_test_split(valid_and_test_ids,
-                                                   train_size=self.hparams.train_val_test_split[1] / (
-                                                       self.hparams.train_val_test_split[1] + self.hparams.train_val_test_split[2]),
-                                                   stratify=valid_and_test_ids['counts'],
-                                                   shuffle=True,
-                                                   random_state=42
-                                                   )
+                                                train_size=self.hparams.train_val_test_split[1] / (
+                                                    self.hparams.train_val_test_split[1] + self.hparams.train_val_test_split[2]),
+                                                stratify=stratify,
+                                                shuffle=True,
+                                                random_state=42
+                                                )
             assert len(train_ids) + len(val_ids) + len(test_ids) == len(unique_img_ids)
 
             if visualize_dist: self.visualize_dist(masks, train_ids, val_ids, test_ids)
@@ -192,6 +199,6 @@ if __name__ == "__main__":
         loader = airbus.test_dataloader()
         img, mask = next(iter(loader))
 
-        TransformAirbus.imshow_batch(img, mask)
+        imshow_batch(img, mask)
 
     main()
