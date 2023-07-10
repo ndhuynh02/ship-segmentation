@@ -80,31 +80,23 @@ class AirbusDataModule(LightningDataModule):
             unique_img_ids = masks.groupby(
                 'ImageId').size().reset_index(name='counts') # cols: ImageId & counts
             if (self.hparams.subset < 3000):
-                train_ids, valid_and_test_ids = train_test_split(unique_img_ids,
-                                                             train_size=self.hparams.train_val_test_split[0],
-                                                             shuffle=True,
-                                                             random_state=42
-                                                             )
-                val_ids, test_ids = train_test_split(valid_and_test_ids,
-                                                    train_size=self.hparams.train_val_test_split[1] / (
-                                                        self.hparams.train_val_test_split[1] + self.hparams.train_val_test_split[2]),
-                                                    shuffle=True,
-                                                    random_state=42
-                                                    )
+                stratify = False
             else: 
-                train_ids, valid_and_test_ids = train_test_split(unique_img_ids,
-                                                                train_size=self.hparams.train_val_test_split[0],
-                                                                stratify=unique_img_ids['counts'],
-                                                                shuffle=True,
-                                                                random_state=42
-                                                                )
-                val_ids, test_ids = train_test_split(valid_and_test_ids,
-                                                    train_size=self.hparams.train_val_test_split[1] / (
-                                                        self.hparams.train_val_test_split[1] + self.hparams.train_val_test_split[2]),
-                                                    stratify=valid_and_test_ids['counts'],
-                                                    shuffle=True,
-                                                    random_state=42
-                                                    )
+                stratify = unique_img_ids['counts']
+
+            train_ids, valid_and_test_ids = train_test_split(unique_img_ids,
+                                                            train_size=self.hparams.train_val_test_split[0],
+                                                            stratify=stratify,
+                                                            shuffle=True,
+                                                            random_state=42
+                                                            )
+            val_ids, test_ids = train_test_split(valid_and_test_ids,
+                                                train_size=self.hparams.train_val_test_split[1] / (
+                                                    self.hparams.train_val_test_split[1] + self.hparams.train_val_test_split[2]),
+                                                stratify=stratify,
+                                                shuffle=True,
+                                                random_state=42
+                                                )
             assert len(train_ids) + len(val_ids) + len(test_ids) == len(unique_img_ids)
 
             if visualize_dist: self.visualize_dist(masks, train_ids, val_ids, test_ids)
