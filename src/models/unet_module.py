@@ -77,6 +77,11 @@ class UNetLitModule(LightningModule):
 
         preds = self.forward(x)
         loss = self.criterion(preds, y)
+
+        # BCE_loss, jaccard_loss = self.criterion.get_BCE_and_jaccard(preds, y)
+        # self.log("train/bce_loss", BCE_loss, on_step=True, on_epoch=True, prog_bar=False)
+        # self.log("train/jaccard_loss", jaccard_loss, on_step=True, on_epoch=True, prog_bar=False)
+
         return loss, preds, y
 
     def training_step(self, batch: Any, batch_idx: int):

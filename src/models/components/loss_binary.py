@@ -14,6 +14,16 @@ class LossBinary:
     def update_pos_weight(self, pos_weight: torch.FloatTensor = None):
         if(pos_weight is not None):
             self.nll_loss.pos_weight = pos_weight
+        
+    def get_BCE_and_jaccard(self, outputs, targets):
+        eps = 1e-15
+        jaccard_target = (targets == 1.0).float()
+        jaccard_output = torch.sigmoid(outputs)
+
+        intersection = (jaccard_output * jaccard_target).sum()
+        union = jaccard_output.sum() + jaccard_target.sum()
+        
+        return self.nll_loss(outputs, targets), - torch.log((intersection + eps) / (union - intersection + eps))
 
     def __call__(self, outputs, targets):
         loss = (1 - self.jaccard_weight) * self.nll_loss(outputs, targets)
