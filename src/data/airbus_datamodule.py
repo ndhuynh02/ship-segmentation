@@ -80,7 +80,7 @@ class AirbusDataModule(LightningDataModule):
             unique_img_ids = masks.groupby(
                 'ImageId').size().reset_index(name='counts') # cols: ImageId & counts
             if (self.hparams.subset < 3000):
-                stratify = False
+                stratify = None
             else: 
                 stratify = unique_img_ids['counts']
 
