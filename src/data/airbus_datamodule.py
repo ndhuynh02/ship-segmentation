@@ -5,7 +5,7 @@ from typing import Optional, Tuple
 
 import torch
 from pytorch_lightning import LightningDataModule
-from torch.utils.data import DataLoader, Dataset, Subset
+from torch.utils.data import DataLoader, Dataset, Subset, random_split
 from sklearn.model_selection import train_test_split
 
 from src.data.components.airbus import AirbusDataset
@@ -74,38 +74,47 @@ class AirbusDataModule(LightningDataModule):
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
             dataset = AirbusDataset(data_dir=self.hparams.data_dir, undersample=self.hparams.undersample, subset=self.hparams.subset)
+            # Try catch block for stratified splits
+            try:
+                masks = dataset.dataframe
+                unique_img_ids = masks.groupby(
+                    'ImageId').size().reset_index(name='counts') # cols: ImageId & counts
+                train_ids, valid_and_test_ids = train_test_split(unique_img_ids,
+                                                                train_size=self.hparams.train_val_test_split[0],
+                                                                stratify=unique_img_ids['counts'],
+                                                                shuffle=True,
+                                                                random_state=42
+                                                                )
+                val_ids, test_ids = train_test_split(valid_and_test_ids,
+                                                    train_size=self.hparams.train_val_test_split[1] / (
+                                                        self.hparams.train_val_test_split[1] + self.hparams.train_val_test_split[2]),
+                                                    stratify=valid_and_test_ids['counts'],
+                                                    shuffle=True,
+                                                    random_state=42
+                                                    )
+                assert len(train_ids) + len(val_ids) + len(test_ids) == len(unique_img_ids)
 
-            # stratified split
-            masks = dataset.dataframe
-            unique_img_ids = masks.groupby(
-                'ImageId').size().reset_index(name='counts') # cols: ImageId & counts
-            if (self.hparams.subset < 3000):
-                stratify = None
-            else: 
-                stratify = unique_img_ids['counts']
+                if visualize_dist: self.visualize_dist(masks, train_ids, val_ids, test_ids)
 
-            train_ids, valid_and_test_ids = train_test_split(unique_img_ids,
-                                                            train_size=self.hparams.train_val_test_split[0],
-                                                            stratify=stratify,
-                                                            shuffle=True,
-                                                            random_state=42
-                                                            )
-            val_ids, test_ids = train_test_split(valid_and_test_ids,
-                                                train_size=self.hparams.train_val_test_split[1] / (
-                                                    self.hparams.train_val_test_split[1] + self.hparams.train_val_test_split[2]),
-                                                stratify=stratify,
-                                                shuffle=True,
-                                                random_state=42
-                                                )
-            assert len(train_ids) + len(val_ids) + len(test_ids) == len(unique_img_ids)
+                # get subset of dataset from indices
+                self.data_train = Subset(dataset, train_ids.index.to_list())
+                self.data_val = Subset(dataset, val_ids.index.to_list())
+                self.data_test = Subset(dataset, test_ids.index.to_list())
 
-            if visualize_dist: self.visualize_dist(masks, train_ids, val_ids, test_ids)
+                print("Using stratified train_test_split.")
+            except:
+                data_len = len(dataset)
+                train_len = int(data_len * self.hparams.train_val_test_split[0])
+                val_len = int(data_len * self.hparams.train_val_test_split[1])
+                test_len = data_len - train_len - val_len
 
-            # get subset of dataset from indices
-            self.data_train = Subset(dataset, train_ids.index.to_list())
-            self.data_val = Subset(dataset, val_ids.index.to_list())
-            self.data_test = Subset(dataset, test_ids.index.to_list())
+                self.data_train, self.data_val, self.data_test = random_split(
+                    dataset=dataset,
+                    lengths=[train_len, val_len, test_len],
+                    generator=torch.Generator().manual_seed(42),
+                )
 
+                print("Using random_split.")
             # create transform dataset from subset
             self.data_train = TransformAirbus(self.data_train, self.hparams.transform_train)
             self.data_val = TransformAirbus(self.data_val, self.hparams.transform_val)
