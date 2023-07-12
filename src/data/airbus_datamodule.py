@@ -74,7 +74,6 @@ class AirbusDataModule(LightningDataModule):
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
             dataset = AirbusDataset(data_dir=self.hparams.data_dir, undersample=self.hparams.undersample, subset=self.hparams.subset)
-            # stratified split
             # Try catch block for stratified splits
             try:
                 masks = dataset.dataframe
@@ -101,6 +100,8 @@ class AirbusDataModule(LightningDataModule):
                 self.data_train = Subset(dataset, train_ids.index.to_list())
                 self.data_val = Subset(dataset, val_ids.index.to_list())
                 self.data_test = Subset(dataset, test_ids.index.to_list())
+
+                print("Using stratified train_test_split.")
             except:
                 data_len = len(dataset)
                 train_len = int(data_len * self.hparams.train_val_test_split[0])
@@ -112,6 +113,8 @@ class AirbusDataModule(LightningDataModule):
                     lengths=[train_len, val_len, test_len],
                     generator=torch.Generator().manual_seed(42),
                 )
+
+                print("Using random_split.")
             # create transform dataset from subset
             self.data_train = TransformAirbus(self.data_train, self.hparams.transform_train)
             self.data_val = TransformAirbus(self.data_val, self.hparams.transform_val)
