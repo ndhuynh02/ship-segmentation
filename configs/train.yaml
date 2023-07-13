@@ -6,7 +6,7 @@ defaults:
   - _self_
   - data: airbus.yaml
   - model: unet.yaml
-  - callbacks: default.yaml
+  - callbacks: airbus.yaml
   - logger: wandb # set logger here or use command line (e.g. `python train.py logger=tensorboard`)
   - trainer: gpu.yaml
   - paths: default.yaml
