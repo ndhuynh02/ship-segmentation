@@ -86,7 +86,7 @@ class UNetLitModule(LightningModule):
         x, y = batch
 
         cnt1 = (y==1).sum().item() # count number of class 1 in image
-        cnt0 = 768*768 - cnt1
+        cnt0 = y.numel() - cnt1
         if cnt1 != 0:
             BCE_pos_weight = torch.FloatTensor([1.0 * cnt0 / cnt1]).to(device="cuda")
         else:
