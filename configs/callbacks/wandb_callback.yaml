@@ -1,0 +1,4 @@
+wandb_callback:
+  _target_: src.utils.callback.wandb.WandbCallback
+  image_id: "0006c52e8.jpg"
+  data_path: ${paths.data_dir}/airbus
