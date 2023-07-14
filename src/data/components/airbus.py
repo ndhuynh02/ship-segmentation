@@ -16,13 +16,15 @@ import glob
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
 
 import cv2
-from PIL import Image
+from PIL import Image, ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 from src.utils.airbus_utils import masks_as_image, imshow
 
 class AirbusDataset(Dataset):
-    def __init__(self, data_dir:str = 'data/airbus', undersample:int = 1400, subset:int = 500) -> None:
+    def __init__(self, data_dir:str = 'data/airbus', undersample:int = 140000, subset:int = 10000) -> None:
         super().__init__()
 
         self.data_dir = data_dir
@@ -47,16 +49,31 @@ class AirbusDataset(Dataset):
             self.dataframe = masks
 
         image_ids = self.dataframe['ImageId'].unique()
-        self.filenames = [os.path.join(self.data_dir, "train_v2", image_id) for image_id in image_ids]
 
         # use subset of data 
         if subset != 0:
+<<<<<<< HEAD
             image_ids_subset = image_ids[:subset].tolist()
             self.filenames = [os.path.join(self.data_dir, "train_v2", image_id) for image_id in image_ids_subset]
             self.dataframe = self.dataframe[self.dataframe['ImageId'].isin(image_ids_subset)].reset_index(drop=True)
             assert len(self.filenames) == self.dataframe['ImageId'].nunique(), \
                 "The number of filenames does not match the number of unique ImageIds"
 >>>>>>> data-an
+=======
+            dataframe_subset = self.dataframe.groupby("ImageId").size().reset_index(name='counts') # cols: ImageId & counts
+            image_ids_subset, _ = train_test_split(dataframe_subset,
+                                                    train_size=subset / len(image_ids),
+                                                    stratify=dataframe_subset['counts'],
+                                                    shuffle=True,
+                                                    random_state=42
+                                                    )
+            image_ids = image_ids_subset["ImageId"]
+            self.dataframe = self.dataframe[self.dataframe['ImageId'].isin(image_ids)].reset_index(drop=True)
+
+        self.filenames = [os.path.join(self.data_dir, "train_v2", image_id) for image_id in image_ids]
+        assert len(self.filenames) == self.dataframe['ImageId'].nunique(), \
+            "The number of filenames does not match the number of unique ImageIds"
+>>>>>>> dev
 
     def __len__(self):
         return len(self.filenames)
