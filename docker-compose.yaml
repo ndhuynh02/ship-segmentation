@@ -2,13 +2,13 @@ version: '3.8'
 services:
   api:
     build: .
-    image: airbus_duc # image name
-    container_name: airbus_duc_con # container name
+    image: ship-test-image # image name
+    container_name: ship-test-name # container name
     volumes:
       - airbus_data:/workspace/data
     ports:
       - 8080:8080
-    shm_size: '11gb'  # set the shared memory size to 2GB
+    shm_size: '2gb'  # set the shared memory size to 2GB
     ulimits:
       memlock: # unlimited
         soft: -1 
@@ -26,4 +26,3 @@ services:
     
 volumes:
   airbus_data:
-    external: true
