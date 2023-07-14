@@ -53,6 +53,7 @@ class AirbusDataset(Dataset):
         # use subset of data 
         if subset != 0:
 <<<<<<< HEAD
+<<<<<<< HEAD
             image_ids_subset = image_ids[:subset].tolist()
             self.filenames = [os.path.join(self.data_dir, "train_v2", image_id) for image_id in image_ids_subset]
             self.dataframe = self.dataframe[self.dataframe['ImageId'].isin(image_ids_subset)].reset_index(drop=True)
@@ -60,6 +61,8 @@ class AirbusDataset(Dataset):
                 "The number of filenames does not match the number of unique ImageIds"
 >>>>>>> data-an
 =======
+=======
+>>>>>>> dev
             dataframe_subset = self.dataframe.groupby("ImageId").size().reset_index(name='counts') # cols: ImageId & counts
             image_ids_subset, _ = train_test_split(dataframe_subset,
                                                     train_size=subset / len(image_ids),
@@ -73,6 +76,9 @@ class AirbusDataset(Dataset):
         self.filenames = [os.path.join(self.data_dir, "train_v2", image_id) for image_id in image_ids]
         assert len(self.filenames) == self.dataframe['ImageId'].nunique(), \
             "The number of filenames does not match the number of unique ImageIds"
+<<<<<<< HEAD
+>>>>>>> dev
+=======
 >>>>>>> dev
 
     def __len__(self):
