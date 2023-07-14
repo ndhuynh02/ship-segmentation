@@ -24,7 +24,7 @@ class WandbCallback(Callback):
         image_path = os.path.join(data_path, 'train_v2')
         image_path = os.path.join(image_path, image_id)
         self.sample_image = np.array(Image.open(image_path).convert('RGB'))
-
+        
         dataframe = pd.read_csv(os.path.join(data_path, 'train_ship_segmentations_v2.csv'))
         self.sample_mask = dataframe[dataframe['ImageId'] == image_id]['EncodedPixels']
         self.sample_mask = masks_as_image(self.sample_mask)
@@ -45,10 +45,11 @@ class WandbCallback(Callback):
 
         pred_mask = trainer.model(image)
         pred_mask = pred_mask.detach() # (1, 1, 768, 768)
-
+        
         pred_mask = torch.sigmoid(pred_mask)
         pred_mask = (pred_mask >= 0.5)
         pred_mask = pred_mask.cpu().numpy().astype(np.uint8)
 
         wandb_logger = trainer.logger 
         wandb_logger.log_image(key='predicted mask', images=[Image.fromarray(mask_overlay(self.sample_image, pred_mask))])
+        

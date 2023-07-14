@@ -11,4 +11,3 @@ num_workers: 2
 pin_memory: False
 undersample: 140000 # number of non-ship images to remove
 subset: 10000 # set to 0 to use all data
-

@@ -19,7 +19,8 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 
 import cv2
-from PIL import Image
+from PIL import Image, ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 from src.utils.airbus_utils import masks_as_image, imshow
 
 class AirbusDataset(Dataset):
