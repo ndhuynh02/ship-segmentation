@@ -5,9 +5,16 @@ from pytorch_lightning import LightningModule
 from torchmetrics import MaxMetric, MeanMetric
 from torchmetrics.classification.accuracy import Accuracy
 
-from src.models.components.loss_binary import LossBinary
+from src.models.components.loss_binary import LossBinary, MixedLoss
 from torchmetrics import JaccardIndex
 
+import pandas as pd
+import numpy as np
+import os
+from PIL import Image
+from src.data.components.airbus import AirbusDataset
+
+from src.utils.airbus_utils import mask_overlay, masks_as_image
 
 class UNetLitModule(LightningModule):
     """Example of LightningModule for MNIST classification.
@@ -39,7 +46,8 @@ class UNetLitModule(LightningModule):
         self.net = net
 
         # loss function
-        self.criterion = LossBinary(jaccard_weight=5)
+        self.criterion = LossBinary(jaccard_weight=0.5, pos_weight=torch.FloatTensor([1.0]).to(device="cuda"))
+        # self.criterion = MixedLoss()
 
         # metric objects for calculating and averaging accuracy across batches
         self.train_metric = JaccardIndex(task="binary", num_classes=2)
@@ -64,10 +72,34 @@ class UNetLitModule(LightningModule):
         self.val_metric.reset()
         self.val_metric_best.reset()
 
+        # file_id ='003b48a9e.jpg'
+        # image = os.path.join('data/airbus/train_v2', file_id)
+        # self.sample_image = np.array(Image.open(image).convert('RGB'))
+
+        # dataframe = pd.read_csv('data/airbus/train_ship_segmentations_v2.csv')
+        # self.sample_mask = dataframe[dataframe['ImageId'] == file_id]['EncodedPixels']
+        # self.sample_mask = masks_as_image(self.sample_mask)
+
+        # self.logger.log_image(key='real images', images=[Image.fromarray(mask_overlay(self.sample_image, self.sample_mask))])
+
     def model_step(self, batch: Any):
         x, y = batch
+
+        cnt1 = (y==1).sum().item() # count number of class 1 in image
+        cnt0 = y.numel() - cnt1
+        if cnt1 != 0:
+            BCE_pos_weight = torch.FloatTensor([1.0 * cnt0 / cnt1]).to(device="cuda")
+        else:
+            BCE_pos_weight = torch.FloatTensor([1.0]).to(device="cuda")
+        self.criterion.update_pos_weight(pos_weight=BCE_pos_weight)
+
         preds = self.forward(x)
         loss = self.criterion(preds, y)
+
+        # BCE_loss, jaccard_loss = self.criterion.get_BCE_and_jaccard(preds, y)
+        # self.log("train/bce_loss", BCE_loss, on_step=True, on_epoch=True, prog_bar=False)
+        # self.log("train/jaccard_loss", jaccard_loss, on_step=True, on_epoch=True, prog_bar=False)
+
         return loss, preds, y
 
     def training_step(self, batch: Any, batch_idx: int):

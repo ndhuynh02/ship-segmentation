@@ -14,4 +14,4 @@ scheduler:
   patience: 10
 
 net:
-  _target_: src.models.components.unet.UNet
+  _target_: src.models.components.unet34.Unet34

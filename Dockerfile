@@ -1,4 +1,4 @@
-FROM pytorch/pytorch:1.12.0-cuda11.3-cudnn8-devel
+FROM pytorch/pytorch:1.12.1-cuda11.3-cudnn8-devel
 
 # Set working directory
 WORKDIR /workspace
@@ -15,6 +15,9 @@ RUN pip install --no-cache-dir -r requirements_for_docker.txt
 
 # Install dependencies for cv2
 RUN apt-get install ffmpeg libsm6 libxext6  -y
+
+# set PYTHONPATH
+ENV PYTHONPATH "${PYTHONPATH}:/workspace/src"
 
 # Copy the rest of the files
 COPY . .
