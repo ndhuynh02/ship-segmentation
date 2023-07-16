@@ -13,5 +13,5 @@ scheduler:
   factor: 0.1
   patience: 10
 
-net:
-  _target_: src.models.components.unet.UNet
+defaults:
+  - net: UNet34.yaml
