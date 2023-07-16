@@ -30,16 +30,6 @@ class AirbusDataset(Dataset):
         self.data_dir = data_dir
         self.prepare_data()
 
-<<<<<<< HEAD
-        # self.filenames = glob.glob(os.path.join(self.data_dir, 'train_v2', "*.jpg"))
-        self.dataframe = pd.read_csv(os.path.join(self.data_dir, 'train_ship_segmentations_v2.csv'))
-        self.dataframe = self.dataframe.drop(self.dataframe[self.dataframe.EncodedPixels.isnull()].sample(120000,random_state=42).index)
-        self.fileids = self.dataframe['ImageId'].unique()
-        self.filenames = []
-        for fileid in self.fileids:
-            item = os.path.join(self.data_dir, 'train_v2', fileid)
-            self.filenames.append(item)
-=======
         masks = pd.read_csv(os.path.join(self.data_dir, 'train_ship_segmentations_v2.csv'))
 
         # undersample non-ship images
@@ -52,17 +42,6 @@ class AirbusDataset(Dataset):
 
         # use subset of data 
         if subset != 0:
-<<<<<<< HEAD
-<<<<<<< HEAD
-            image_ids_subset = image_ids[:subset].tolist()
-            self.filenames = [os.path.join(self.data_dir, "train_v2", image_id) for image_id in image_ids_subset]
-            self.dataframe = self.dataframe[self.dataframe['ImageId'].isin(image_ids_subset)].reset_index(drop=True)
-            assert len(self.filenames) == self.dataframe['ImageId'].nunique(), \
-                "The number of filenames does not match the number of unique ImageIds"
->>>>>>> data-an
-=======
-=======
->>>>>>> dev
             dataframe_subset = self.dataframe.groupby("ImageId").size().reset_index(name='counts') # cols: ImageId & counts
             image_ids_subset, _ = train_test_split(dataframe_subset,
                                                     train_size=subset / len(image_ids),
@@ -76,10 +55,6 @@ class AirbusDataset(Dataset):
         self.filenames = [os.path.join(self.data_dir, "train_v2", image_id) for image_id in image_ids]
         assert len(self.filenames) == self.dataframe['ImageId'].nunique(), \
             "The number of filenames does not match the number of unique ImageIds"
-<<<<<<< HEAD
->>>>>>> dev
-=======
->>>>>>> dev
 
     def __len__(self):
         return len(self.filenames)
