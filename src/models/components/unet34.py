@@ -33,21 +33,20 @@ class Unet34(torch.nn.Module):
     def __init__(self, rn=rn34_feature_extractor):
         super().__init__()
         self.rn = rn
-        self.sfs = [SaveFeatures(rn[i]) for i in [2,4,5,6]]
-        self.up1 = UNet_Up_Block(512,256,256)
-        self.up2 = UNet_Up_Block(256,128,256)
-        self.up3 = UNet_Up_Block(256,64,256)
-        self.up4 = UNet_Up_Block(256,64,256)
+        self.sfs = [SaveFeatures(rn[i]) for i in [2, 4, 5, 6]]
+        self.up1 = UNet_Up_Block(512, 256, 256)
+        self.up2 = UNet_Up_Block(256, 128, 256)
+        self.up3 = UNet_Up_Block(256, 64, 256)
+        self.up4 = UNet_Up_Block(256, 64, 256)
         self.up5 = torch.nn.ConvTranspose2d(256, 1, 2, stride=2)
 
-    def forward(self,x):
+    def forward(self, x):
         x = F.relu(self.rn(x))
         x = self.up1(x, self.sfs[3].features)
         x = self.up2(x, self.sfs[2].features)
         x = self.up3(x, self.sfs[1].features)
         x = self.up4(x, self.sfs[0].features)
         x = self.up5(x)
-        # return x[:,0]
         return x
 
     def close(self):
