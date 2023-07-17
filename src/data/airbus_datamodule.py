@@ -100,6 +100,7 @@ class AirbusDataModule(LightningDataModule):
                 self.data_train = Subset(dataset, train_ids.index.to_list())
                 self.data_val = Subset(dataset, val_ids.index.to_list())
                 self.data_test = Subset(dataset, test_ids.index.to_list())
+                #....
 
                 print("Using stratified train_test_split.")
             except:
