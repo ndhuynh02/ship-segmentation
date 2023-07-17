@@ -12,6 +12,7 @@ import pandas as pd
 import numpy as np
 import os
 from PIL import Image
+import gc
 from src.data.components.airbus import AirbusDataset
 
 from src.utils.airbus_utils import mask_overlay, masks_as_image
@@ -99,6 +100,12 @@ class UNetLitModule(LightningModule):
         # BCE_loss, jaccard_loss = self.criterion.get_BCE_and_jaccard(preds, y)
         # self.log("train/bce_loss", BCE_loss, on_step=True, on_epoch=True, prog_bar=False)
         # self.log("train/jaccard_loss", jaccard_loss, on_step=True, on_epoch=True, prog_bar=False)
+
+        # Code to try to fix CUDA out of memory issues
+
+        del x
+        gc.collect()
+        torch.cuda.empty_cache()
 
         return loss, preds, y
 

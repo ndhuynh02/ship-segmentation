@@ -23,6 +23,7 @@ class UNet_Up_Block(torch.nn.Module):
         cat_p = torch.cat([up_p,x_p], dim=1)
         return self.bn(F.relu(cat_p))
 
+# TODO: Tim hieu them ve phan nay
 class SaveFeatures():
     features=None
     def __init__(self, m): self.hook = m.register_forward_hook(self.hook_fn)
