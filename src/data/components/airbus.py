@@ -33,10 +33,10 @@ class AirbusDataset(Dataset):
         masks = pd.read_csv(os.path.join(self.data_dir, 'train_ship_segmentations_v2.csv'))
 
         # undersample non-ship images
-        if undersample != 0:
-            self.dataframe = masks.drop(masks[masks.EncodedPixels.isnull()].sample(undersample, random_state=42).index)
-        elif undersample == -1:
+        if undersample == -1:
             self.dataframe = masks.dropna(subset=['EncodedPixels']) # Drop all non-ship images
+        elif undersample > 0:
+            self.dataframe = masks.drop(masks[masks.EncodedPixels.isnull()].sample(undersample, random_state=42).index)
         else: 
             self.dataframe = masks
 

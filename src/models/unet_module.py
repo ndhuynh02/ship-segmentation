@@ -92,7 +92,7 @@ class UNetLitModule(LightningModule):
             BCE_pos_weight = torch.FloatTensor([1.0 * cnt0 / cnt1]).to(device="cuda")
         else:
             BCE_pos_weight = torch.FloatTensor([1.0]).to(device="cuda")
-        self.criterion.update_pos_weight(pos_weight=BCE_pos_weight)
+        # self.criterion.update_pos_weight(pos_weight=BCE_pos_weight)
 
         preds = self.forward(x)
         loss = self.criterion(preds, y)
