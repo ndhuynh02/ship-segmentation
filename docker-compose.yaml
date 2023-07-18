@@ -2,8 +2,8 @@ version: '3.8'
 services:
   api:
     build: .
-    image: ship_detector_hung # image name
-    container_name: ship_detector_hung # container name
+    image: ship-test-image # image name
+    container_name: ship-test-name # container name
     volumes:
       - airbus_data:/workspace/data
     ports:
