@@ -35,6 +35,8 @@ class AirbusDataset(Dataset):
         # undersample non-ship images
         if undersample != 0:
             self.dataframe = masks.drop(masks[masks.EncodedPixels.isnull()].sample(undersample, random_state=42).index)
+        elif undersample == -1:
+            self.dataframe = masks.dropna(subset=['EncodedPixels']) # Drop all non-ship images
         else: 
             self.dataframe = masks
 
