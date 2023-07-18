@@ -7,6 +7,7 @@ from torchmetrics.classification.accuracy import Accuracy
 
 from src.models.components.loss_binary import LossBinary, MixedLoss
 from src.models.components.focal_t_loss import FocalTverskyLoss
+from src.models.components.lc_dice_loss import LogCoshDiceLoss
 from torchmetrics import JaccardIndex
 
 import pandas as pd
@@ -49,7 +50,7 @@ class UNetLitModule(LightningModule):
 
         # loss function
         # self.criterion = LossBinary(jaccard_weight=0.5, pos_weight=torch.FloatTensor([1.0]).to(device="cuda"))
-        self.criterion = FocalTverskyLoss()
+        self.criterion = LogCoshDiceLoss()
 
         # metric objects for calculating and averaging accuracy across batches
         self.train_metric = JaccardIndex(task="binary", num_classes=2)
