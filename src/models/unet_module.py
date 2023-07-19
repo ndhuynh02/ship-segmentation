@@ -17,6 +17,7 @@ from src.data.components.airbus import AirbusDataset
 
 from src.utils.airbus_utils import mask_overlay, masks_as_image
 
+
 class UNetLitModule(LightningModule):
     """Example of LightningModule for MNIST classification.
 
@@ -52,8 +53,8 @@ class UNetLitModule(LightningModule):
 
         # metric objects for calculating and averaging accuracy across batches
         self.train_metric = JaccardIndex(task="binary", num_classes=2)
-        self.val_metric = JaccardIndex(task="binary", num_classes=2) 
-        self.test_metric = JaccardIndex(task="binary", num_classes=2) 
+        self.val_metric = JaccardIndex(task="binary", num_classes=2)
+        self.test_metric = JaccardIndex(task="binary", num_classes=2)
 
         # for averaging loss across batches
         self.train_loss = MeanMetric()
@@ -86,7 +87,7 @@ class UNetLitModule(LightningModule):
     def model_step(self, batch: Any):
         x, y = batch
 
-        cnt1 = (y==1).sum().item() # count number of class 1 in image
+        cnt1 = (y == 1).sum().item()  # count number of class 1 in image
         cnt0 = y.numel() - cnt1
         if cnt1 != 0:
             BCE_pos_weight = torch.FloatTensor([1.0 * cnt0 / cnt1]).to(device="cuda")
@@ -115,8 +116,16 @@ class UNetLitModule(LightningModule):
         # update and log metrics
         self.train_loss(loss)
         self.train_metric(preds, targets)
-        self.log("train/loss", self.train_loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("train/jaccard", self.train_metric, on_step=False, on_epoch=True, prog_bar=True)
+        self.log(
+            "train/loss", self.train_loss, on_step=False, on_epoch=True, prog_bar=True
+        )
+        self.log(
+            "train/jaccard",
+            self.train_metric,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True,
+        )
 
         # we can return here dict with any tensors
         # and then read it in some callback or in `training_epoch_end()` below
@@ -130,7 +139,9 @@ class UNetLitModule(LightningModule):
         self.val_loss(loss)
         self.val_metric(preds, targets)
         self.log("val/loss", self.val_loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("val/jaccard", self.val_metric, on_step=False, on_epoch=True, prog_bar=True)
+        self.log(
+            "val/jaccard", self.val_metric, on_step=False, on_epoch=True, prog_bar=True
+        )
 
         return {"loss": loss, "preds": preds, "targets": targets}
 
@@ -147,8 +158,16 @@ class UNetLitModule(LightningModule):
         # update and log metrics
         self.test_loss(loss)
         self.test_metric(preds, targets)
-        self.log("test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("test/jaccard", self.test_metric, on_step=False, on_epoch=True, prog_bar=True)
+        self.log(
+            "test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True
+        )
+        self.log(
+            "test/jaccard",
+            self.test_metric,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True,
+        )
 
         return {"loss": loss, "preds": preds, "targets": targets}
 
@@ -181,19 +200,18 @@ if __name__ == "__main__":
 
     # find paths
     pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
-    path = pyrootutils.find_root(
-        search_from=__file__, indicator=".project-root")
+    path = pyrootutils.find_root(search_from=__file__, indicator=".project-root")
     config_path = str(path / "configs")
     print(f"project-root: {path}")
-    print(f'config path: {config_path}')
+    print(f"config path: {config_path}")
 
     @hydra.main(version_base="1.3", config_path=config_path, config_name="train.yaml")
     def main(cfg: DictConfig):
-        print(f'config: \n {OmegaConf.to_yaml(cfg.model, resolve=True)}')
+        print(f"config: \n {OmegaConf.to_yaml(cfg.model, resolve=True)}")
 
         model = hydra.utils.instantiate(cfg.model)
         batch = torch.rand(1, 3, 256, 256)
         output = model(batch)
-        print(f'output shape: {output.shape}') # [1, 1, 256, 256]
+        print(f"output shape: {output.shape}")  # [1, 1, 256, 256]
 
     main()
