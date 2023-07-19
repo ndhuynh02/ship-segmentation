@@ -5,7 +5,7 @@ from pytorch_lightning import LightningModule
 from torchmetrics import MaxMetric, MeanMetric
 from torchmetrics.classification.accuracy import Accuracy
 
-from src.models.components.loss_binary import LossBinary, MixedLoss
+from src.models.components.loss import LossBinary, MixedLoss
 from torchmetrics import JaccardIndex
 
 import pandas as pd
@@ -36,6 +36,7 @@ class UNetLitModule(LightningModule):
         net: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
+        criterion
     ):
         super().__init__()
 
@@ -46,7 +47,7 @@ class UNetLitModule(LightningModule):
         self.net = net
 
         # loss function
-        self.criterion = LossBinary(jaccard_weight=0.5, pos_weight=torch.FloatTensor([1.0]).to(device="cuda"))
+        self.criterion = criterion
         # self.criterion = MixedLoss()
 
         # metric objects for calculating and averaging accuracy across batches
@@ -85,13 +86,14 @@ class UNetLitModule(LightningModule):
     def model_step(self, batch: Any):
         x, y = batch
 
-        cnt1 = (y==1).sum().item() # count number of class 1 in image
-        cnt0 = y.numel() - cnt1
-        if cnt1 != 0:
-            BCE_pos_weight = torch.FloatTensor([1.0 * cnt0 / cnt1]).to(device="cuda")
-        else:
-            BCE_pos_weight = torch.FloatTensor([1.0]).to(device="cuda")
-        self.criterion.update_pos_weight(pos_weight=BCE_pos_weight)
+        if(isinstance(self.criterion, LossBinary)):
+            cnt1 = (y==1).sum().item() # count number of class 1 in image
+            cnt0 = y.numel() - cnt1
+            if cnt1 != 0:
+                BCE_pos_weight = torch.FloatTensor([1.0 * cnt0 / cnt1]).to(device="cuda")
+            else:
+                BCE_pos_weight = torch.FloatTensor([1.0]).to(device="cuda")
+            self.criterion.update_pos_weight(pos_weight=BCE_pos_weight)
 
         preds = self.forward(x)
         loss = self.criterion(preds, y)

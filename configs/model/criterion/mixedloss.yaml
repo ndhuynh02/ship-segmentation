@@ -1,0 +1,4 @@
+_target_: src.models.components.loss.MixedLoss
+
+alpha: 0.5
+gamma: 2
