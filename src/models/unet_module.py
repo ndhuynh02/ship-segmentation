@@ -83,7 +83,7 @@ class UNetLitModule(LightningModule):
         # self.logger.log_image(key='real images', images=[Image.fromarray(mask_overlay(self.sample_image, self.sample_mask))])
 
     def model_step(self, batch: Any):
-        x, y = batch
+        x, y, id = batch
 
         cnt1 = (y==1).sum().item() # count number of class 1 in image
         cnt0 = y.numel() - cnt1
