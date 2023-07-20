@@ -5,11 +5,14 @@ from typing import Optional, Tuple
 
 import torch
 from pytorch_lightning import LightningDataModule
-from torch.utils.data import DataLoader, Dataset, Subset, random_split
+from torch.utils.data import DataLoader, Dataset, Subset
 from sklearn.model_selection import train_test_split
+from torch.utils.data import random_split
 
 from src.data.components.airbus import AirbusDataset
 from src.data.components.transform_airbus import TransformAirbus
+
+from albumentations.pytorch.transforms import ToTensorV2
 
 import albumentations as A
 
@@ -115,10 +118,25 @@ class AirbusDataModule(LightningDataModule):
                 )
 
                 print("Using random_split.")
-            # create transform dataset from subset
-            self.data_train = TransformAirbus(self.data_train, self.hparams.transform_train)
-            self.data_val = TransformAirbus(self.data_val, self.hparams.transform_val)
-            self.data_test = TransformAirbus(self.data_test, self.hparams.transform_val)
+            
+            # Create transform dataset from subset
+            transformed_data_train = TransformAirbus(self.data_train, self.hparams.transform_train)
+            transformed_data_val = TransformAirbus(self.data_val, self.hparams.transform_val)
+            transformed_data_test = TransformAirbus(self.data_test, self.hparams.transform_val)
+            
+            # transform original data
+            self.data_train = TransformAirbus(self.data_train)
+            self.data_val = TransformAirbus(self.data_val)
+            self.data_test = TransformAirbus(self.data_test)
+                        
+            # Append transformed datasets to original datasets
+            self.data_train += transformed_data_train
+            self.data_val += transformed_data_val
+            self.data_test += transformed_data_test
+            
+            print("Number of samples in data_train:", len(self.data_train))
+            print("Number of samples in data_val:", len(self.data_val))
+            print("Number of samples in data_test:", len(self.data_test))
 
     # visualize distribution of train, val & test
     def visualize_dist(self, masks, train_ids, val_ids, test_ids):
