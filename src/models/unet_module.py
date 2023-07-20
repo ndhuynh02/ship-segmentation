@@ -130,20 +130,29 @@ class UNetLitModule(LightningModule):
         # we can return here dict with any tensors
         # and then read it in some callback or in `training_epoch_end()` below
         # remember to always return loss from `training_step()` or backpropagation will fail!
-        return {"loss": loss, "preds": preds, "targets": targets}
+        return {"loss": loss}
 
     def validation_step(self, batch: Any, batch_idx: int):
-        loss, preds, targets = self.model_step(batch)
+        gc.collect()
+        torch.cuda.empty_cache()
+        with torch.no_grad():
+            loss, preds, targets = self.model_step(batch)
 
-        # update and log metrics
-        self.val_loss(loss)
-        self.val_metric(preds, targets)
-        self.log("val/loss", self.val_loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log(
-            "val/jaccard", self.val_metric, on_step=False, on_epoch=True, prog_bar=True
-        )
+            # update and log metrics
+            self.val_loss(loss)
+            self.val_metric(preds, targets)
+            self.log(
+                "val/loss", self.val_loss, on_step=False, on_epoch=True, prog_bar=True
+            )
+            self.log(
+                "val/jaccard",
+                self.val_metric,
+                on_step=False,
+                on_epoch=True,
+                prog_bar=True,
+            )
 
-        return {"loss": loss, "preds": preds, "targets": targets}
+            return {"loss": loss}
 
     def validation_epoch_end(self, outputs: List[Any]):
         acc = self.val_metric.compute()  # get current val acc
@@ -153,23 +162,26 @@ class UNetLitModule(LightningModule):
         self.log("val/jaccard_best", self.val_metric_best.compute(), prog_bar=True)
 
     def test_step(self, batch: Any, batch_idx: int):
-        loss, preds, targets = self.model_step(batch)
+        gc.collect()
+        torch.cuda.empty_cache()
+        with torch.no_grad():
+            loss, preds, targets = self.model_step(batch)
 
-        # update and log metrics
-        self.test_loss(loss)
-        self.test_metric(preds, targets)
-        self.log(
-            "test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True
-        )
-        self.log(
-            "test/jaccard",
-            self.test_metric,
-            on_step=False,
-            on_epoch=True,
-            prog_bar=True,
-        )
+            # update and log metrics
+            self.test_loss(loss)
+            self.test_metric(preds, targets)
+            self.log(
+                "test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True
+            )
+            self.log(
+                "test/jaccard",
+                self.test_metric,
+                on_step=False,
+                on_epoch=True,
+                prog_bar=True,
+            )
 
-        return {"loss": loss, "preds": preds, "targets": targets}
+            return {"loss": loss, "preds": preds, "targets": targets}
 
     def configure_optimizers(self):
         """Choose what optimizers and learning-rate schedulers to use in your optimization.
