@@ -1,10 +1,5 @@
-from clearml import Task
+from clearml import InputModel
 
-# initialize a task
-task = Task.init(project_name='ship-segmentation',
-                 task_name='upload_checkpoint')
-
-# add and upload local file artifact
-task.upload_artifact("unet_checkpoint",
-                     artifact_object='ckpts/unet-pos_weight-epoch_046.ckpt'
-                     )
+InputModel.import_model(weights_url="/workspace/logs/train/runs/2023-07-16_23-13-17/checkpoints/old_epoch_046.ckpt",
+                        name='unet-pos-weight-model',
+                        project='ship-segmentation')
