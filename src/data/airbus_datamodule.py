@@ -50,7 +50,6 @@ class AirbusDataModule(LightningDataModule):
         train_val_test_split: Tuple[int, int, int] = (0.8, 0.1, 0.1),
         transform_train: Optional[A.Compose] = None,
         transform_val: Optional[A.Compose] = None,
-        img_size: int = 384,
         batch_size: int = 64,
         num_workers: int = 0,
         pin_memory: bool = False,
@@ -132,14 +131,10 @@ class AirbusDataModule(LightningDataModule):
                 print("Using random_split.")
             # create transform dataset from subset
             self.data_train = TransformAirbus(
-                self.data_train, self.hparams.transform_train, self.hparams.img_size
+                self.data_train, self.hparams.transform_train
             )
-            self.data_val = TransformAirbus(
-                self.data_val, self.hparams.transform_val, self.hparams.img_size
-            )
-            self.data_test = TransformAirbus(
-                self.data_test, self.hparams.transform_val, self.hparams.img_size
-            )
+            self.data_val = TransformAirbus(self.data_val, self.hparams.transform_val)
+            self.data_test = TransformAirbus(self.data_test, self.hparams.transform_val)
 
     # visualize distribution of train, val & test
     def visualize_dist(self, masks, train_ids, val_ids, test_ids):

@@ -18,15 +18,11 @@ class TransformAirbus(Dataset):
     std = None
 
     def __init__(
-        self,
-        dataset: AirbusDataset,
-        transform: Optional[Compose] = None,
-        img_size: Optional[int] = None,
+        self, dataset: AirbusDataset, transform: Optional[Compose] = None
     ) -> None:
         super().__init__()
 
         self.dataset = dataset
-        self.img_size = img_size
 
         if transform is not None:
             self.transform = transform
@@ -47,16 +43,11 @@ class TransformAirbus(Dataset):
         # fig, (ax1, ax2) = plt.subplots(1, 2)
         # ax1.imshow(image)
         # ax2.imshow(mask)
-        # plt.pause(5)
-
-        if self.img_size is not None:
-            # Resize the image and mask to the specified size
-            resize_transform = A.Resize(self.img_size, self.img_size)
-            resized = resize_transform(image=image, mask=mask)
-            image, mask = resized["image"], resized["mask"]
+        # plt.pause(5
 
         if self.transform is not None:
             transformed = self.transform(image=image, mask=mask)
+            # img_size set in hydra config
             image = transformed["image"]  # (3, img_size, img_size)
             mask = transformed["mask"]  # (img_size, img_size), uint8
             mask = mask.unsqueeze(0).float()  # (1, img_size, img_size)
