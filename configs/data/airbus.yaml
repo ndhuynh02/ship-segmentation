@@ -4,7 +4,6 @@ defaults:
   - transform_train: default.yaml
   - transform_val: default.yaml
 
-img_size: 384
 data_dir: ${paths.data_dir}/airbus
 batch_size: 4 
 train_val_test_split: [0.8, 0.1, 0.1]
