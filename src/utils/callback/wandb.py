@@ -23,7 +23,9 @@ import torch
 from src.utils.airbus_utils import mask_overlay, masks_as_image
 
 class WandbCallback(Callback):
-    def __init__(self, image_id: str = '003b48a9e.jpg', data_path: str = 'data/airbus'):
+    def __init__(self, image_id: str = '003b48a9e.jpg', data_path: str = 'data/airbus', log_images: int = 5):
+        self.log_images = log_images # number of logged images when eval
+
         self.four_first_preds = []
         self.four_first_targets = []
         self.four_first_batch = []
@@ -193,6 +195,9 @@ class WandbCallback(Callback):
     """        
         
     def on_test_batch_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule, outputs, batch: Any, batch_idx: int, dataloader_idx: int) -> None:
+        if(self.log_images <= 0):
+            return
+
         IMG_MEAN = [0.485, 0.456, 0.406]
         IMG_STD = [0.229, 0.224, 0.225]
         logger = trainer.logger
@@ -211,6 +216,9 @@ class WandbCallback(Callback):
 
         images = denormalize(images)
         for img, pred, target, id in zip(images, preds, targets, ids):
+            if(self.log_images <= 0):
+                break
+
             img = (img.permute(1, 2, 0).cpu().numpy()*255).astype(np.uint8)
             pred = torch.sigmoid(pred)
             pred = (pred >= 0.5)
@@ -226,5 +234,4 @@ class WandbCallback(Callback):
             
             logger.log_image(key="Sample", images=[log_img, log_pred, log_target], caption=[id+"-Real", id+"-Predict", id+"-GroundTruth"])
 
-
-    
+            self.log_images -= 1
