@@ -98,7 +98,7 @@ class UNetLitModule(LightningModule):
         # update and log metrics
         self.train_loss(loss)
         self.train_metric(preds, targets)
-
+        
         self.log("train/loss", self.train_loss,
                  on_step=False, on_epoch=True, prog_bar=True)
         self.log("train/jaccard", self.train_metric,
@@ -115,7 +115,7 @@ class UNetLitModule(LightningModule):
         # update and log metrics
         self.val_loss(loss)
         self.val_metric(preds, targets)
-
+        
         self.log("val/loss", self.val_loss, on_step=False,
                  on_epoch=True, prog_bar=True)
         self.log("val/jaccard", self.val_metric,
@@ -191,5 +191,5 @@ if __name__ == "__main__":
         output = model(batch)
 
         print(f'output shape: {output.shape}')  # [1, 1, 256, 256]
-
+  
     main()
