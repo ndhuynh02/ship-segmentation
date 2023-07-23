@@ -8,7 +8,7 @@ ResNet34 = resnet34(weights=ResNet34_Weights.DEFAULT)
 class ResNet34_Binary(torch.nn.Module):
     def __init__(self, rn=ResNet34):
         super().__init__()
-        self.last_layer = torch.nn.Linear(1000, 2)
+        self.last_layer = torch.nn.Linear(1000, 1)
         self.rn = rn
 
     def forward(self, x):

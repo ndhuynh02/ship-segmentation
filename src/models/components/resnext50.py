@@ -8,7 +8,7 @@ resnext50 = resnext50_32x4d(weights=ResNeXt50_32X4D_Weights.DEFAULT)
 class ResNeXt50_Binary(torch.nn.Module):
     def __init__(self, resnext=resnext50):
         super().__init__()
-        self.last_layer = torch.nn.Linear(1000, 2)
+        self.last_layer = torch.nn.Linear(1000, 1)
         self.resnext = resnext
 
     def forward(self, x):
