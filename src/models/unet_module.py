@@ -90,11 +90,6 @@ class UNetLitModule(LightningModule):
         preds = self.forward(x)
         loss = self.criterion(preds, y)
 
-        # Code to try to fix CUDA out of memory issues
-        del x
-        gc.collect()
-        torch.cuda.empty_cache()
-
         return loss, preds, y
 
     def training_step(self, batch: Any, batch_idx: int):

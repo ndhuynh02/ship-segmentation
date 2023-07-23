@@ -1,6 +1,4 @@
 _target_ : src.models.components.lovasz_loss.LovaszLoss
 
-ignore_index: None
-
 
 
