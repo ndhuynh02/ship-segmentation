@@ -98,6 +98,7 @@ class UNetLitModule(LightningModule):
         # update and log metrics
         self.train_loss(loss)
         self.train_metric(preds, targets)
+
         self.log("train/loss", self.train_loss,
                  on_step=False, on_epoch=True, prog_bar=True)
         self.log("train/jaccard", self.train_metric,
@@ -114,6 +115,7 @@ class UNetLitModule(LightningModule):
         # update and log metrics
         self.val_loss(loss)
         self.val_metric(preds, targets)
+
         self.log("val/loss", self.val_loss, on_step=False,
                  on_epoch=True, prog_bar=True)
         self.log("val/jaccard", self.val_metric,
@@ -135,6 +137,7 @@ class UNetLitModule(LightningModule):
         # update and log metrics
         self.test_loss(loss)
         self.test_metric(preds, targets)
+
         self.log("test/loss", self.test_loss, on_step=False,
                  on_epoch=True, prog_bar=True)
         self.log("test/jaccard", self.test_metric,
@@ -174,6 +177,7 @@ if __name__ == "__main__":
         __file__, indicator=".project-root", pythonpath=True)
     path = pyrootutils.find_root(
         search_from=__file__, indicator=".project-root")
+
     config_path = str(path / "configs")
     print(f"project-root: {path}")
     print(f"config path: {config_path}")
@@ -185,6 +189,7 @@ if __name__ == "__main__":
         model = hydra.utils.instantiate(cfg.model)
         batch = torch.rand(1, 3, 256, 256)
         output = model(batch)
+
         print(f'output shape: {output.shape}')  # [1, 1, 256, 256]
 
     main()
