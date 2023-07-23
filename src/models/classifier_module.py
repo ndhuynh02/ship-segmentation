@@ -63,6 +63,7 @@ class ResNetLitModule(LightningModule):
 
     def model_step(self, batch: Any):
         x, y = batch[0], batch[2]
+        y = y.float().unsqueeze(1)
         preds = self.forward(x)
         loss = self.criterion(preds, y)
         return loss, preds, y
