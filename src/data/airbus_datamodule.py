@@ -15,6 +15,8 @@ from src.data.components.transform_airbus import TransformAirbus
 from albumentations.pytorch.transforms import ToTensorV2
 
 import albumentations as A
+import pandas as pd
+import numpy as np
 
 from src.utils.airbus_utils import imshow_batch
 
@@ -67,6 +69,9 @@ class AirbusDataModule(LightningDataModule):
         self.data_train: Optional[Dataset] = None
         self.data_val: Optional[Dataset] = None
         self.data_test: Optional[Dataset] = None
+        self.data_train_only_ship: Optional[Dataset] = None
+        self.data_val_only_ship: Optional[Dataset] = None
+        self.data_test_only_ship: Optional[Dataset] = None
 
     def setup(self, visualize_dist=False, stage: Optional[str] = None):
         """Load data. Set variables: `self.data_train`, `self.data_val`, `self.data_test`.
@@ -80,8 +85,14 @@ class AirbusDataModule(LightningDataModule):
             # Try catch block for stratified splits
             try:
                 masks = dataset.dataframe
-                unique_img_ids = masks.groupby(
+                masks_without_ship = masks[masks['EncodedPixels'].isnull()]
+                masks_only_ship = masks[~masks['EncodedPixels'].isnull()]
+                unique_img_ids_only_ship = masks_only_ship.groupby(
                     'ImageId').size().reset_index(name='counts') # cols: ImageId & counts
+                unique_img_ids_no_ship = masks_without_ship.groupby(
+                    'ImageId').size().reset_index(name='counts') # cols: ImageId & counts
+                unique_img_ids_no_ship.loc[:, 'counts'] = 0
+                unique_img_ids = pd.concat([unique_img_ids_only_ship, unique_img_ids_no_ship], axis=0)
                 train_ids, valid_and_test_ids = train_test_split(unique_img_ids,
                                                                 train_size=self.hparams.train_val_test_split[0],
                                                                 stratify=unique_img_ids['counts'],
@@ -98,14 +109,29 @@ class AirbusDataModule(LightningDataModule):
                 assert len(train_ids) + len(val_ids) + len(test_ids) == len(unique_img_ids)
 
                 if visualize_dist: self.visualize_dist(masks, train_ids, val_ids, test_ids)
+                
+                train_ids_only_ship = train_ids[train_ids['counts'] != 0].copy()
+                val_ids_only_ship = val_ids[val_ids['counts'] != 0].copy()
+                test_ids_only_ship = test_ids[test_ids['counts'] != 0].copy()
+                
+                train_ids_only_ship.reset_index(drop=True, inplace=True)
+                val_ids_only_ship.reset_index(drop=True, inplace=True)
+                test_ids_only_ship.reset_index(drop=True, inplace=True)
 
                 # get subset of dataset from indices
                 self.data_train = Subset(dataset, train_ids.index.to_list())
                 self.data_val = Subset(dataset, val_ids.index.to_list())
                 self.data_test = Subset(dataset, test_ids.index.to_list())
+                
+                #get subset of dataset with only ship from indices
+                self.data_train_only_ship = Subset(dataset, train_ids_only_ship.index.to_list())
+                self.data_val_only_ship = Subset(dataset, val_ids_only_ship.index.to_list())
+                self.data_test_only_ship = Subset(dataset, test_ids_only_ship.index.to_list())
 
                 print("Using stratified train_test_split.")
-            except:
+            except Exception as e:
+                print(e)
+
                 data_len = len(dataset)
                 train_len = int(data_len * self.hparams.train_val_test_split[0])
                 val_len = int(data_len * self.hparams.train_val_test_split[1])
@@ -116,28 +142,36 @@ class AirbusDataModule(LightningDataModule):
                     lengths=[train_len, val_len, test_len],
                     generator=torch.Generator().manual_seed(42),
                 )
+                
+                #dataset_only_ship = AirbusDataset(data_dir=self.hparams.data_dir, undersample=-1, subset= 0)
+                dataset_only_ship = dataset.dataframe.dropna(subset=['EncodedPixels'])
+                data_len1 = len(dataset_only_ship)
+                train_len1 = int(data_len1 * self.hparams.train_val_test_split[0])
+                val_len1 = int(data_len1 * self.hparams.train_val_test_split[1])
+                test_len1 = data_len1 - train_len1 - val_len1
 
+                self.data_train_only_ship, self.data_val_only_ship, self.data_test_only_ship = random_split(
+                    dataset=dataset_only_ship,
+                    lengths=[train_len1, val_len1, test_len1],
+                    generator=torch.Generator().manual_seed(42),
+                )
                 print("Using random_split.")
             
-            # Create transform dataset from subset
-            transformed_data_train = TransformAirbus(self.data_train, self.hparams.transform_train)
-            transformed_data_val = TransformAirbus(self.data_val, self.hparams.transform_val)
-            transformed_data_test = TransformAirbus(self.data_test, self.hparams.transform_val)
-            
+            # Transform only ship data
+            self.data_train_only_ship = TransformAirbus(self.data_train_only_ship, self.hparams.transform_train)
+            self.data_val_only_ship = TransformAirbus(self.data_val_only_ship, self.hparams.transform_val)
+            self.data_test_only_ship = TransformAirbus(self.data_test_only_ship, self.hparams.transform_val)
+                        
             # transform original data
             self.data_train = TransformAirbus(self.data_train)
             self.data_val = TransformAirbus(self.data_val)
             self.data_test = TransformAirbus(self.data_test)
                         
             # Append transformed datasets to original datasets
-            self.data_train += transformed_data_train
-            self.data_val += transformed_data_val
-            self.data_test += transformed_data_test
+            self.data_train += self.data_train_only_ship
+            self.data_val += self.data_val_only_ship
+            self.data_test += self.data_test_only_ship
             
-            print("Number of samples in data_train:", len(self.data_train))
-            print("Number of samples in data_val:", len(self.data_val))
-            print("Number of samples in data_test:", len(self.data_test))
-
     # visualize distribution of train, val & test
     def visualize_dist(self, masks, train_ids, val_ids, test_ids):
         import pandas as pd
