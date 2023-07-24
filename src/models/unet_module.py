@@ -85,10 +85,16 @@ class UNetLitModule(LightningModule):
             else:
                 BCE_pos_weight = torch.FloatTensor(
                     [1.0]).to(device=self.device)
+                
             self.criterion.update_pos_weight(pos_weight=BCE_pos_weight)
 
         preds = self.forward(x)
         loss = self.criterion(preds, y)
+
+        # Code to try to fix CUDA out of memory issues
+        del x
+        gc.collect()
+        torch.cuda.empty_cache()
 
         return loss, preds, y
 

@@ -1,7 +1,7 @@
 _target_: src.models.unet_module.UNetLitModule
 defaults:
   - criterion: lossbinary.yaml
-  
+
 optimizer:
   _target_: torch.optim.Adam
   _partial_: true
