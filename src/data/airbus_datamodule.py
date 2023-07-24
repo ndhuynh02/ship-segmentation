@@ -122,11 +122,15 @@ class AirbusDataModule(LightningDataModule):
                 self.data_train = Subset(dataset, train_ids.index.to_list())
                 self.data_val = Subset(dataset, val_ids.index.to_list())
                 self.data_test = Subset(dataset, test_ids.index.to_list())
+<<<<<<< HEAD
                 
                 #get subset of dataset with only ship from indices
                 self.data_train_only_ship = Subset(dataset, train_ids_only_ship.index.to_list())
                 self.data_val_only_ship = Subset(dataset, val_ids_only_ship.index.to_list())
                 self.data_test_only_ship = Subset(dataset, test_ids_only_ship.index.to_list())
+=======
+                #....
+>>>>>>> 4da28968e093458eae64b774c4df689fa6785247
 
                 print("Using stratified train_test_split.")
             except Exception as e:
