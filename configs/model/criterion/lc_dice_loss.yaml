@@ -1,0 +1,1 @@
+_target_ : src.models.components.lc_dice_loss.LogCoshDiceLoss
