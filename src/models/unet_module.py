@@ -37,7 +37,7 @@ class UNetLitModule(LightningModule):
         net: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
-        criterion
+        criterion: torch.nn.Module
     ):
         super().__init__()
 
@@ -75,14 +75,17 @@ class UNetLitModule(LightningModule):
 
     def model_step(self, batch: Any):
         x, y = batch
-        
-        if(isinstance(self.criterion, LossBinary)):
-            cnt1 = (y==1).sum().item() # count number of class 1 in image
+
+        if (isinstance(self.criterion, LossBinary)):
+            cnt1 = (y == 1).sum().item()  # count number of class 1 in image
             cnt0 = y.numel() - cnt1
             if cnt1 != 0:
-                BCE_pos_weight = torch.FloatTensor([1.0 * cnt0 / cnt1]).to(device=self.device)
+                BCE_pos_weight = torch.FloatTensor(
+                    [1.0 * cnt0 / cnt1]).to(device=self.device)
             else:
-                BCE_pos_weight = torch.FloatTensor([1.0]).to(device=self.device)
+                BCE_pos_weight = torch.FloatTensor(
+                    [1.0]).to(device=self.device)
+                
             self.criterion.update_pos_weight(pos_weight=BCE_pos_weight)
 
         preds = self.forward(x)
@@ -101,16 +104,11 @@ class UNetLitModule(LightningModule):
         # update and log metrics
         self.train_loss(loss)
         self.train_metric(preds, targets)
-        self.log(
-            "train/loss", self.train_loss, on_step=False, on_epoch=True, prog_bar=True
-        )
-        self.log(
-            "train/jaccard",
-            self.train_metric,
-            on_step=False,
-            on_epoch=True,
-            prog_bar=True,
-        )
+        
+        self.log("train/loss", self.train_loss,
+                 on_step=False, on_epoch=True, prog_bar=True)
+        self.log("train/jaccard", self.train_metric,
+                 on_step=False, on_epoch=True, prog_bar=True)
 
         # we can return here dict with any tensors
         # and then read it in some callback or in `training_epoch_end()` below
@@ -123,10 +121,11 @@ class UNetLitModule(LightningModule):
         # update and log metrics
         self.val_loss(loss)
         self.val_metric(preds, targets)
-        self.log("val/loss", self.val_loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log(
-            "val/jaccard", self.val_metric, on_step=False, on_epoch=True, prog_bar=True
-        )
+        
+        self.log("val/loss", self.val_loss, on_step=False,
+                 on_epoch=True, prog_bar=True)
+        self.log("val/jaccard", self.val_metric,
+                 on_step=False, on_epoch=True, prog_bar=True)
 
         return {"loss": loss, "preds": preds, "targets": targets}
 
@@ -135,7 +134,8 @@ class UNetLitModule(LightningModule):
         self.val_metric_best(acc)  # update best so far val acc
         # log `val_acc_best` as a value through `.compute()` method, instead of as a metric object
         # otherwise metric would be reset by lightning after each epoch
-        self.log("val/jaccard_best", self.val_metric_best.compute(), prog_bar=True)
+        self.log("val/jaccard_best",
+                 self.val_metric_best.compute(), prog_bar=True)
 
     def test_step(self, batch: Any, batch_idx: int):
         loss, preds, targets = self.model_step(batch)
@@ -143,16 +143,11 @@ class UNetLitModule(LightningModule):
         # update and log metrics
         self.test_loss(loss)
         self.test_metric(preds, targets)
-        self.log(
-            "test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True
-        )
-        self.log(
-            "test/jaccard",
-            self.test_metric,
-            on_step=False,
-            on_epoch=True,
-            prog_bar=True,
-        )
+
+        self.log("test/loss", self.test_loss, on_step=False,
+                 on_epoch=True, prog_bar=True)
+        self.log("test/jaccard", self.test_metric,
+                 on_step=False, on_epoch=True, prog_bar=True)
 
         return {"loss": loss, "preds": preds, "targets": targets}
 
@@ -184,8 +179,11 @@ if __name__ == "__main__":
     import hydra
 
     # find paths
-    pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
-    path = pyrootutils.find_root(search_from=__file__, indicator=".project-root")
+    pyrootutils.setup_root(
+        __file__, indicator=".project-root", pythonpath=True)
+    path = pyrootutils.find_root(
+        search_from=__file__, indicator=".project-root")
+
     config_path = str(path / "configs")
     print(f"project-root: {path}")
     print(f"config path: {config_path}")
@@ -197,6 +195,7 @@ if __name__ == "__main__":
         model = hydra.utils.instantiate(cfg.model)
         batch = torch.rand(1, 3, 256, 256)
         output = model(batch)
-        print(f"output shape: {output.shape}")  # [1, 1, 256, 256]
 
+        print(f'output shape: {output.shape}')  # [1, 1, 256, 256]
+  
     main()
