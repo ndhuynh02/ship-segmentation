@@ -70,7 +70,7 @@ class AirbusDataset(Dataset):
         image = Image.open(image).convert('RGB')
         mask = masks_as_image(mask)
 
-        return np.array(image, dtype=np.uint8), mask
+        return np.array(image, dtype=np.uint8), mask, file_id
 
     def prepare_data(self):
         data_path = os.path.join(self.data_dir, 'train_v2')
