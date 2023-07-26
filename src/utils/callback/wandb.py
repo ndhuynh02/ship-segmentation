@@ -38,7 +38,7 @@ class WandbCallback(Callback):
         image_path = os.path.join(data_path, "train_v2")
         image_path = os.path.join(image_path, image_id)
         self.sample_image = np.array(Image.open(image_path).convert("RGB"))
-
+        self.img = np.array(Image.open(image_path).convert("RGB").resize((384, 384)))
         dataframe = pd.read_csv(
             os.path.join(data_path, "train_ship_segmentations_v2.csv")
         )
@@ -80,7 +80,7 @@ class WandbCallback(Callback):
         wandb_logger.log_image(
             key="predicted mask",
             images=[
-                Image.fromarray(mask_overlay(self.sample_image, pred_mask)).resize(
+                Image.fromarray(mask_overlay(self.img, pred_mask)).resize(
                     (768, 768)  # Resize logged image to 768x768
                 )
             ],
