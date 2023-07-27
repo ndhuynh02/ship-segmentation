@@ -38,7 +38,7 @@ class TransformAirbus(Dataset):
         return len(self.dataset)
 
     def __getitem__(self, index) -> Any:
-        image, mask, label = self.dataset[index]  # (768, 768, 3), (768, 768)
+        image, mask, label, file_id = self.dataset[index]  # (768, 768, 3), (768, 768)
 
         # fig, (ax1, ax2) = plt.subplots(1, 2)
         # ax1.imshow(image)
@@ -52,7 +52,7 @@ class TransformAirbus(Dataset):
             mask = transformed["mask"]  # (img_size, img_size), uint8
             mask = mask.unsqueeze(0).float()  # (1, img_size, img_size)
 
-        return image, mask, label
+        return image, mask, label, file_id
 
     # @staticmethod
     # def imshow_batch(images, masks, title=None):

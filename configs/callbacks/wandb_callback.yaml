@@ -3,3 +3,4 @@ wandb_callback:
   image_id: "0006c52e8.jpg"
   data_path: ${paths.data_dir}/airbus
   img_size: 384
+  n_images_to_log: 5
