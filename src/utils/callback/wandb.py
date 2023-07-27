@@ -1,5 +1,8 @@
 import wandb
 
+import hydra
+from omegaconf import DictConfig, OmegaConf
+
 import torch
 from pytorch_lightning.callbacks import Callback
 from torchvision.utils import make_grid
@@ -23,7 +26,16 @@ from src.utils.airbus_utils import mask_overlay, masks_as_image
 
 
 class WandbCallback(Callback):
-    def __init__(self, image_id: str = "003b48a9e.jpg", data_path: str = "data/airbus"):
+    def __init__(
+        self,
+        image_id: str = "003b48a9e.jpg",
+        data_path: str = "data/airbus",
+        img_size: int = 384,
+    ):
+        # this line allows to access init params with 'self.hparams' attribute
+        # also ensures init params will be stored in ckpt
+        self.save_hyperparameters(logger=False)
+
         self.four_first_preds = []
         self.four_first_targets = []
         self.four_first_batch = []
@@ -38,7 +50,11 @@ class WandbCallback(Callback):
         image_path = os.path.join(data_path, "train_v2")
         image_path = os.path.join(image_path, image_id)
         self.sample_image = np.array(Image.open(image_path).convert("RGB"))
-        self.img = np.array(Image.open(image_path).convert("RGB").resize((384, 384)))
+        self.img = np.array(
+            Image.open(image_path)
+            .convert("RGB")
+            .resize((self.hparams.img_size, self.hparams.img_size))
+        )
         dataframe = pd.read_csv(
             os.path.join(data_path, "train_ship_segmentations_v2.csv")
         )
@@ -47,7 +63,7 @@ class WandbCallback(Callback):
 
         self.transform = Compose(
             [
-                A.Resize(384, 384),
+                A.Resize(self.hparams.img_size, self.hparams.img_size),
                 A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                 ToTensorV2(),
             ]
