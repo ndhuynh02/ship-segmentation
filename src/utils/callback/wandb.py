@@ -29,6 +29,8 @@ class WandbCallback(Callback):
         data_path: str = "data/airbus",
         img_size: int = 384,
     ):
+        self.img_size = img_size
+
         self.four_first_preds = []
         self.four_first_targets = []
         self.four_first_batch = []
