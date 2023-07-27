@@ -49,9 +49,9 @@ class WandbCallback(Callback):
         image_path = os.path.join(image_path, image_id)
 
         self.sample_image = np.array(Image.open(image_path).convert("RGB"))
-        self.img = np.array(
-            Image.open(image_path).convert("RGB").resize((self.img_size, self.img_size))
-        )
+        # self.img = np.array(
+        #     Image.open(image_path).convert("RGB").resize((self.img_size, self.img_size))
+        # )
         dataframe = pd.read_csv(
             os.path.join(data_path, "train_ship_segmentations_v2.csv")
         )
@@ -86,16 +86,15 @@ class WandbCallback(Callback):
         pred_mask = pred_mask.detach()  # (1, 1, img_size, img_size)
         pred_mask = torch.sigmoid(pred_mask)
         pred_mask = pred_mask >= 0.5
+        pred_mask = pred_mask.squeeze(0)
+        pred_mask = pred_mask.permute(1, 2, 0)
         pred_mask = pred_mask.cpu().numpy().astype(np.uint8)
+        pred_mask = cv2.resize(pred_mask, (768, 768), interpolation=cv2.INTER_CUBIC)
 
         wandb_logger = trainer.logger
         wandb_logger.log_image(
             key="predicted mask",
-            images=[
-                Image.fromarray(mask_overlay(self.img, pred_mask)).resize(
-                    (768, 768)  # Resize logged image to 768x768
-                )
-            ],
+            images=[Image.fromarray(mask_overlay(self.sample_image, pred_mask))],
         )
 
     def on_validation_batch_end(
