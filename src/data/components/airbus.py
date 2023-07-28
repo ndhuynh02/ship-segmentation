@@ -98,7 +98,7 @@ class AirbusDataset(Dataset):
         else:
             label = 1
 
-        return np.array(image, dtype=np.uint8), mask, label
+        return np.array(image, dtype=np.uint8), mask, label, file_id
 
     def prepare_data(self):
         data_path = os.path.join(self.data_dir, "train_v2")
