@@ -30,7 +30,7 @@ class AirbusDataset(Dataset):
         self.data_dir = data_dir
         self.prepare_data()
 
-        masks = pd.read_csv(os.path.join(self.data_dir, 'train_ship_segmentations_v2.csv'))
+        masks = pd.read_csv(os.path.join('data_csv', 'new_train_ship_segmentations.csv'))
 
         # undersample non-ship images
         if undersample != 0:
