@@ -143,6 +143,7 @@ dmypy.json
 *.h5
 *.tar
 *.tar.gz
+*.ckpt
 
 # Lightning-Hydra-Template
 configs/local/default.yaml
@@ -151,3 +152,6 @@ configs/local/default.yaml
 /outputs/
 .env
 *.ipynb
+
+# Gradio
+/flagged/

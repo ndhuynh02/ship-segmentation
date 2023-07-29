@@ -39,7 +39,7 @@ def mask_overlay(image, mask, color=(0, 1, 0)):
     return img
 
 def imshow(img, mask, title=None):
-    fig = plt.figure(figsize = (6,6))
+    plt.figure(figsize = (6,6))
     plt.imshow(mask_overlay(img, mask))
     if title is not None:
         plt.title(title)
@@ -69,6 +69,4 @@ def imshow_batch(images, masks, grid_shape=(8, 8)):
 
         ax = fig.add_subplot(grid_shape[0], grid_shape[1], i+1, xticks=[], yticks=[])
         ax.imshow(mask_overlay(img, mask))
-        if title is not None:
-            ax.set_title(title)
     plt.show()
