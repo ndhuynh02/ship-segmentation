@@ -1,0 +1,18 @@
+service: "service:ship_segment"
+labels:
+  owner: Hayade
+  stage: dev
+include:
+  - "*.py"
+python:
+  packages:
+    - numpy
+    - opencv-python
+    - albumentations
+    - torch
+    - torchvision
+docker:
+  system_packages:
+    - ffmpeg
+    - libsm6
+    - libxext6
