@@ -1,0 +1,3 @@
+defaults:
+  - default.yaml
+  - wandb_callback.yaml

@@ -1,6 +1,7 @@
 _target_: src.models.unet_module.UNetLitModule
 defaults:
   - criterion: lossbinary.yaml
+  - net: UNet.yaml
 
 optimizer:
   _target_: torch.optim.Adam
@@ -14,6 +15,3 @@ scheduler:
   mode: min
   factor: 0.1
   patience: 10
-
-defaults:
-  - net: UNet34.yaml
