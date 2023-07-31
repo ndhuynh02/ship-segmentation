@@ -49,9 +49,6 @@ class WandbCallback(Callback):
         image_path = os.path.join(image_path, image_id)
 
         self.sample_image = np.array(Image.open(image_path).convert("RGB"))
-        # self.img = np.array(
-        #     Image.open(image_path).convert("RGB").resize((self.img_size, self.img_size))
-        # )
         dataframe = pd.read_csv(
             os.path.join(data_path, "train_ship_segmentations_v2.csv")
         )
@@ -139,7 +136,7 @@ class WandbCallback(Callback):
                 mask,
                 label,
                 file_id,
-            ) = batch  # This line may need to pass in the label
+            ) = batch
 
             # image.shape = (b, 3, h, w)
             images = torch.split(image_batch, 1, dim=0)

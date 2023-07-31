@@ -232,7 +232,7 @@ if __name__ == "__main__":
         )  # set visualize_dist to True to see distribution of train, val & test set
 
         loader = airbus.test_dataloader()
-        img, mask, label = next(iter(loader))
+        img, mask, label, file_id = next(iter(loader))
         print(label)
         imshow_batch(img, mask)
 
