@@ -4,19 +4,15 @@ from omegaconf import DictConfig, OmegaConf
 from typing import Optional, Tuple
 
 import torch
+import pandas as pd
 from pytorch_lightning import LightningDataModule
-from torch.utils.data import DataLoader, Dataset, Subset
+from torch.utils.data import DataLoader, Dataset, Subset, random_split
 from sklearn.model_selection import train_test_split
-from torch.utils.data import random_split
 
 from src.data.components.airbus import AirbusDataset
 from src.data.components.transform_airbus import TransformAirbus
 
-from albumentations.pytorch.transforms import ToTensorV2
-
 import albumentations as A
-import pandas as pd
-import numpy as np
 
 from src.utils.airbus_utils import imshow_batch
 
@@ -70,8 +66,6 @@ class AirbusDataModule(LightningDataModule):
         self.data_val: Optional[Dataset] = None
         self.data_test: Optional[Dataset] = None
         self.data_train_only_ship: Optional[Dataset] = None
-        self.data_val_only_ship: Optional[Dataset] = None
-        self.data_test_only_ship: Optional[Dataset] = None
 
     def setup(self, visualize_dist=False, stage: Optional[str] = None):
         """Load data. Set variables: `self.data_train`, `self.data_val`, `self.data_test`.
@@ -85,14 +79,9 @@ class AirbusDataModule(LightningDataModule):
             # Try catch block for stratified splits
             try:
                 masks = dataset.dataframe
-                masks_without_ship = masks[masks['EncodedPixels'].isnull()]
-                masks_only_ship = masks[~masks['EncodedPixels'].isnull()]
-                unique_img_ids_only_ship = masks_only_ship.groupby(
-                    'ImageId').size().reset_index(name='counts') # cols: ImageId & counts
-                unique_img_ids_no_ship = masks_without_ship.groupby(
-                    'ImageId').size().reset_index(name='counts') # cols: ImageId & counts
-                unique_img_ids_no_ship.loc[:, 'counts'] = 0
-                unique_img_ids = pd.concat([unique_img_ids_only_ship, unique_img_ids_no_ship], axis=0)
+                masks['counts'] = masks.apply(lambda row: 0 if pd.isnull(row['EncodedPixels']) else 1, axis=1)
+                unique_img_ids = masks.groupby('ImageId')['counts'].sum().reset_index()
+                
                 train_ids, valid_and_test_ids = train_test_split(unique_img_ids,
                                                                 train_size=self.hparams.train_val_test_split[0],
                                                                 stratify=unique_img_ids['counts'],
@@ -110,32 +99,20 @@ class AirbusDataModule(LightningDataModule):
 
                 if visualize_dist: self.visualize_dist(masks, train_ids, val_ids, test_ids)
                 
-                train_ids_only_ship = train_ids[train_ids['counts'] != 0].copy()
-                val_ids_only_ship = val_ids[val_ids['counts'] != 0].copy()
-                test_ids_only_ship = test_ids[test_ids['counts'] != 0].copy()
-                
+                train_ids_only_ship = train_ids[train_ids['counts'] != 0].copy()          
                 train_ids_only_ship.reset_index(drop=True, inplace=True)
-                val_ids_only_ship.reset_index(drop=True, inplace=True)
-                test_ids_only_ship.reset_index(drop=True, inplace=True)
 
                 # get subset of dataset from indices
                 self.data_train = Subset(dataset, train_ids.index.to_list())
                 self.data_val = Subset(dataset, val_ids.index.to_list())
                 self.data_test = Subset(dataset, test_ids.index.to_list())
-<<<<<<< HEAD
                 
                 #get subset of dataset with only ship from indices
                 self.data_train_only_ship = Subset(dataset, train_ids_only_ship.index.to_list())
-                self.data_val_only_ship = Subset(dataset, val_ids_only_ship.index.to_list())
-                self.data_test_only_ship = Subset(dataset, test_ids_only_ship.index.to_list())
-=======
-                #....
->>>>>>> 4da28968e093458eae64b774c4df689fa6785247
 
                 print("Using stratified train_test_split.")
             except Exception as e:
                 print(e)
-
                 data_len = len(dataset)
                 train_len = int(data_len * self.hparams.train_val_test_split[0])
                 val_len = int(data_len * self.hparams.train_val_test_split[1])
@@ -146,36 +123,25 @@ class AirbusDataModule(LightningDataModule):
                     lengths=[train_len, val_len, test_len],
                     generator=torch.Generator().manual_seed(42),
                 )
-                
-                #dataset_only_ship = AirbusDataset(data_dir=self.hparams.data_dir, undersample=-1, subset= 0)
-                dataset_only_ship = dataset.dataframe.dropna(subset=['EncodedPixels'])
-                data_len1 = len(dataset_only_ship)
-                train_len1 = int(data_len1 * self.hparams.train_val_test_split[0])
-                val_len1 = int(data_len1 * self.hparams.train_val_test_split[1])
-                test_len1 = data_len1 - train_len1 - val_len1
 
-                self.data_train_only_ship, self.data_val_only_ship, self.data_test_only_ship = random_split(
-                    dataset=dataset_only_ship,
-                    lengths=[train_len1, val_len1, test_len1],
+                self.data_train_only_ship, _, _ = random_split(
+                    dataset=dataset,
+                    lengths=[train_len, val_len, test_len],
                     generator=torch.Generator().manual_seed(42),
                 )
                 print("Using random_split.")
             
             # Transform only ship data
             self.data_train_only_ship = TransformAirbus(self.data_train_only_ship, self.hparams.transform_train)
-            self.data_val_only_ship = TransformAirbus(self.data_val_only_ship, self.hparams.transform_val)
-            self.data_test_only_ship = TransformAirbus(self.data_test_only_ship, self.hparams.transform_val)
                         
             # transform original data
             self.data_train = TransformAirbus(self.data_train)
-            self.data_val = TransformAirbus(self.data_val)
-            self.data_test = TransformAirbus(self.data_test)
+            self.data_val = TransformAirbus(self.data_val, self.hparams.transform_val)
+            self.data_test = TransformAirbus(self.data_test, self.hparams.transform_val)
                         
             # Append transformed datasets to original datasets
             self.data_train += self.data_train_only_ship
-            self.data_val += self.data_val_only_ship
-            self.data_test += self.data_test_only_ship
-            
+
     # visualize distribution of train, val & test
     def visualize_dist(self, masks, train_ids, val_ids, test_ids):
         import pandas as pd
