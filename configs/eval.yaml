@@ -4,7 +4,8 @@ defaults:
   - _self_
   - data: airbus.yaml # choose datamodule with `test_dataloader()` for evaluation
   - model: unet.yaml
-  - logger: null
+  - callbacks: airbus.yaml
+  - logger: wandb
   - trainer: gpu.yaml
   - paths: default.yaml
   - extras: default.yaml

@@ -3,9 +3,8 @@ from typing import Any, List
 import torch
 from pytorch_lightning import LightningModule
 from torchmetrics import MaxMetric, MeanMetric
-from torchmetrics.classification.accuracy import Accuracy
 
-from src.models.components.loss_binary import LossBinary, MixedLoss
+from src.models.components.lossbinary import LossBinary
 from torchmetrics import JaccardIndex
 
 import pandas as pd
@@ -38,18 +37,18 @@ class UNetLitModule(LightningModule):
         net: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
+        criterion: torch.nn.Module
     ):
         super().__init__()
 
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
-        self.save_hyperparameters(logger=False, ignore=["net"])
+        self.save_hyperparameters(logger=False, ignore=["net", "criterion"])
 
         self.net = net
 
         # loss function
-        # self.criterion = LossBinary(jaccard_weight=0.5, pos_weight=torch.FloatTensor([1.0]).to(device="cuda"))
-        self.criterion = MixedLoss()
+        self.criterion = criterion
 
         # metric objects for calculating and averaging accuracy across batches
         self.train_metric = JaccardIndex(task="binary", num_classes=2)
@@ -74,36 +73,25 @@ class UNetLitModule(LightningModule):
         self.val_metric.reset()
         self.val_metric_best.reset()
 
-        # file_id ='003b48a9e.jpg'
-        # image = os.path.join('data/airbus/train_v2', file_id)
-        # self.sample_image = np.array(Image.open(image).convert('RGB'))
-
-        # dataframe = pd.read_csv('data/airbus/train_ship_segmentations_v2.csv')
-        # self.sample_mask = dataframe[dataframe['ImageId'] == file_id]['EncodedPixels']
-        # self.sample_mask = masks_as_image(self.sample_mask)
-
-        # self.logger.log_image(key='real images', images=[Image.fromarray(mask_overlay(self.sample_image, self.sample_mask))])
-
     def model_step(self, batch: Any):
-        x, y = batch
+        x, y, id = batch
 
-        cnt1 = (y == 1).sum().item()  # count number of class 1 in image
-        cnt0 = y.numel() - cnt1
-        if cnt1 != 0:
-            BCE_pos_weight = torch.FloatTensor([1.0 * cnt0 / cnt1]).to(device="cuda")
-        else:
-            BCE_pos_weight = torch.FloatTensor([1.0]).to(device="cuda")
-        # self.criterion.update_pos_weight(pos_weight=BCE_pos_weight)
+        if (isinstance(self.criterion, LossBinary)):
+            cnt1 = (y == 1).sum().item()  # count number of class 1 in image
+            cnt0 = y.numel() - cnt1
+            if cnt1 != 0:
+                BCE_pos_weight = torch.FloatTensor(
+                    [1.0 * cnt0 / cnt1]).to(device=self.device)
+            else:
+                BCE_pos_weight = torch.FloatTensor(
+                    [1.0]).to(device=self.device)
+                
+            self.criterion.update_pos_weight(pos_weight=BCE_pos_weight)
 
         preds = self.forward(x)
         loss = self.criterion(preds, y)
 
-        # BCE_loss, jaccard_loss = self.criterion.get_BCE_and_jaccard(preds, y)
-        # self.log("train/bce_loss", BCE_loss, on_step=True, on_epoch=True, prog_bar=False)
-        # self.log("train/jaccard_loss", jaccard_loss, on_step=True, on_epoch=True, prog_bar=False)
-
         # Code to try to fix CUDA out of memory issues
-
         del x
         gc.collect()
         torch.cuda.empty_cache()
@@ -116,16 +104,11 @@ class UNetLitModule(LightningModule):
         # update and log metrics
         self.train_loss(loss)
         self.train_metric(preds, targets)
-        self.log(
-            "train/loss", self.train_loss, on_step=False, on_epoch=True, prog_bar=True
-        )
-        self.log(
-            "train/jaccard",
-            self.train_metric,
-            on_step=False,
-            on_epoch=True,
-            prog_bar=True,
-        )
+        
+        self.log("train/loss", self.train_loss,
+                 on_step=False, on_epoch=True, prog_bar=True)
+        self.log("train/jaccard", self.train_metric,
+                 on_step=False, on_epoch=True, prog_bar=True)
 
         # we can return here dict with any tensors
         # and then read it in some callback or in `training_epoch_end()` below
@@ -138,10 +121,11 @@ class UNetLitModule(LightningModule):
         # update and log metrics
         self.val_loss(loss)
         self.val_metric(preds, targets)
-        self.log("val/loss", self.val_loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log(
-            "val/jaccard", self.val_metric, on_step=False, on_epoch=True, prog_bar=True
-        )
+        
+        self.log("val/loss", self.val_loss, on_step=False,
+                 on_epoch=True, prog_bar=True)
+        self.log("val/jaccard", self.val_metric,
+                 on_step=False, on_epoch=True, prog_bar=True)
 
         return {"loss": loss, "preds": preds, "targets": targets}
 
@@ -150,7 +134,8 @@ class UNetLitModule(LightningModule):
         self.val_metric_best(acc)  # update best so far val acc
         # log `val_acc_best` as a value through `.compute()` method, instead of as a metric object
         # otherwise metric would be reset by lightning after each epoch
-        self.log("val/jaccard_best", self.val_metric_best.compute(), prog_bar=True)
+        self.log("val/jaccard_best",
+                 self.val_metric_best.compute(), prog_bar=True)
 
     def test_step(self, batch: Any, batch_idx: int):
         loss, preds, targets = self.model_step(batch)
@@ -158,16 +143,11 @@ class UNetLitModule(LightningModule):
         # update and log metrics
         self.test_loss(loss)
         self.test_metric(preds, targets)
-        self.log(
-            "test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True
-        )
-        self.log(
-            "test/jaccard",
-            self.test_metric,
-            on_step=False,
-            on_epoch=True,
-            prog_bar=True,
-        )
+
+        self.log("test/loss", self.test_loss, on_step=False,
+                 on_epoch=True, prog_bar=True)
+        self.log("test/jaccard", self.test_metric,
+                 on_step=False, on_epoch=True, prog_bar=True)
 
         return {"loss": loss, "preds": preds, "targets": targets}
 
@@ -199,8 +179,11 @@ if __name__ == "__main__":
     import hydra
 
     # find paths
-    pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
-    path = pyrootutils.find_root(search_from=__file__, indicator=".project-root")
+    pyrootutils.setup_root(
+        __file__, indicator=".project-root", pythonpath=True)
+    path = pyrootutils.find_root(
+        search_from=__file__, indicator=".project-root")
+
     config_path = str(path / "configs")
     print(f"project-root: {path}")
     print(f"config path: {config_path}")
@@ -212,6 +195,7 @@ if __name__ == "__main__":
         model = hydra.utils.instantiate(cfg.model)
         batch = torch.rand(1, 3, 256, 256)
         output = model(batch)
-        print(f"output shape: {output.shape}")  # [1, 1, 256, 256]
 
+        print(f'output shape: {output.shape}')  # [1, 1, 256, 256]
+  
     main()
