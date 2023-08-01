@@ -93,10 +93,7 @@ class AirbusDataset(Dataset):
 
         image = Image.open(image).convert("RGB")
         mask = masks_as_image(mask)
-        if mask.sum() == 0:
-            label = 0
-        else:
-            label = 1
+        label = 0 if mask.sum() == 0 else 1
 
         return np.array(image, dtype=np.uint8), mask, label, file_id
 
@@ -182,9 +179,9 @@ class AirbusDataset(Dataset):
 
 if __name__ == "__main__":
     airbus = AirbusDataset()
-    img, mask, label = airbus[2]
+    img, mask, label, img_id = airbus[2]
     print(img.shape)
     print(mask.shape)
     print(label)
-
+    print(img_id)
     imshow(img, mask)
