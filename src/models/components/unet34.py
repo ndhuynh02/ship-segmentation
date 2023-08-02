@@ -4,22 +4,6 @@ import torch.nn.functional as F
 from torchvision.models import resnet34, ResNet34_Weights
 from src.models.components.resnet34 import ResNet34_Binary
 from src.models.classifier_module import ResNetLitModule
-from src.models.components.mixedloss import MixedLoss
-
-# Initialize the ResNet34 model with pretrained weights
-# rn34 = resnet34(weights=ResNet34_Weights.DEFAULT)
-
-ckpt_path = "./ckpt/Classifier-768.ckpt"
-model = ResNetLitModule.load_from_checkpoint(
-    checkpoint_path=ckpt_path,
-    net=ResNet34_Binary(),
-    criterion=torch.nn.BCEWithLogitsLoss(),
-).net
-
-# Cut out the Average Pooling layer and Fully Connected layer to get the feature extractor part
-# rn34_feature_extractor = torch.nn.Sequential(*list(rn34.children())[:-2])
-
-rn34_feature_extractor = torch.nn.Sequential(*list(model.rn.children())[:-2])
 
 
 class UNet_Up_Block(torch.nn.Module):
@@ -51,10 +35,29 @@ class SaveFeatures:
 
 
 class Unet34(torch.nn.Module):
-    def __init__(self, rn=rn34_feature_extractor):
+    def __init__(
+        self, use_pretrained_classifier=False, ckpt_path="./ckpt/Classifier-768.ckpt"
+    ):
         super().__init__()
-        self.rn = rn
-        self.sfs = [SaveFeatures(rn[i]) for i in [2, 4, 5, 6]]
+        self.use_pretrained_classifier = use_pretrained_classifier
+        if self.use_pretrained_classifier:
+            self.ckpt_path = ckpt_path
+            model = ResNetLitModule.load_from_checkpoint(
+                checkpoint_path=self.ckpt_path,
+                net=ResNet34_Binary(),
+                criterion=torch.nn.BCEWithLogitsLoss(),
+            ).net
+            p_rn34_feature_extractor = torch.nn.Sequential(
+                *list(model.rn.children())[:-2]
+            )
+            self.rn = p_rn34_feature_extractor
+            print("Using pretrained classifier")
+        else:
+            rn34 = resnet34(weights=ResNet34_Weights.DEFAULT)
+            rn34_feature_extractor = torch.nn.Sequential(*list(rn34.children())[:-2])
+            self.rn = rn34_feature_extractor
+            print("Using torchvision.models ResNet34")
+        self.sfs = [SaveFeatures(self.rn[i]) for i in [2, 4, 5, 6]]
         self.up1 = UNet_Up_Block(512, 256, 256)
         self.up2 = UNet_Up_Block(256, 128, 256)
         self.up3 = UNet_Up_Block(256, 64, 256)
