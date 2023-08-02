@@ -156,3 +156,8 @@ configs/local/default.yaml
 # Gradio
 /flagged/
 *.jpg
+
+# NodeJS
+node_modules/
+package-lock.json
+package.json
