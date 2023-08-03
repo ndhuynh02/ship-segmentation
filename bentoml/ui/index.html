@@ -4,6 +4,28 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Image Upload</title>
+  <style>
+    /* Add CSS style for the loading wheel */
+    .loading-wheel {
+      display: none;
+      border: 4px solid rgba(0, 0, 0, 0.3);
+      border-top: 4px solid #3498db;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 2s linear infinite;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      margin-top: -25px;
+      margin-left: -25px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
 </head>
 <body>
   <h1>Image Upload Example</h1>
@@ -16,21 +38,26 @@
     <img id="resultImage" style="max-width: 75%;" alt="Processed Image">
   </div>
 
+  <!-- Add the loading wheel element -->
+  <div class="loading-wheel" id="loadingWheel"></div>
+
   <script>
     const apiEndpoint = 'http://0.0.0.0:4000/segment';
 
     async function postImageToApi(imageFile) {
       try {
+        const loadingWheel = document.getElementById('loadingWheel');
+        loadingWheel.style.display = 'block'; // Show the loading wheel
         
         const formData = new FormData();
         formData.append('image', imageFile);
 
-        console.log("Hello")
         const response = await fetch(apiEndpoint, {
           method: 'POST',
           body: formData,
         });
-        console.log(response)
+
+        loadingWheel.style.display = 'none'; // Hide the loading wheel
 
         if (!response.ok) {
           throw new Error('Network response was not ok');
@@ -48,6 +75,7 @@
         console.log('Image uploaded and processed successfully.');
       } catch (error) {
         console.error('Error:', error);
+        loadingWheel.style.display = 'none'; // Hide the loading wheel in case of an error
         alert('Failed to upload and process the image.');
       }
     }
