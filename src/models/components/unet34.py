@@ -35,13 +35,10 @@ class SaveFeatures:
 
 
 class Unet34(torch.nn.Module):
-    def __init__(
-        self, use_pretrained_classifier=False, ckpt_path="./ckpt/Classifier-768.ckpt"
-    ):
+    def __init__(self, ckpt_path=None):
         super().__init__()
-        self.use_pretrained_classifier = use_pretrained_classifier
-        if self.use_pretrained_classifier:
-            self.ckpt_path = ckpt_path
+        self.ckpt_path = ckpt_path
+        if self.ckpt_path is not None:
             model = ResNetLitModule.load_from_checkpoint(
                 checkpoint_path=self.ckpt_path,
                 net=ResNet34_Binary(),
