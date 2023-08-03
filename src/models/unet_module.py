@@ -5,6 +5,8 @@ from pytorch_lightning import LightningModule
 from torchmetrics import MaxMetric, MeanMetric
 
 from src.models.components.lossbinary import LossBinary
+from src.models.components.lovasz_loss import BCE_Lovasz
+
 from torchmetrics import JaccardIndex
 
 import pandas as pd
@@ -76,7 +78,7 @@ class UNetLitModule(LightningModule):
     def model_step(self, batch: Any):
         x, y, id = batch
 
-        if (isinstance(self.criterion, LossBinary)):
+        if (isinstance(self.criterion, (LossBinary, BCE_Lovasz))):
             cnt1 = (y == 1).sum().item()  # count number of class 1 in image
             cnt0 = y.numel() - cnt1
             if cnt1 != 0:
@@ -85,7 +87,7 @@ class UNetLitModule(LightningModule):
             else:
                 BCE_pos_weight = torch.FloatTensor(
                     [1.0]).to(device=self.device)
-                
+
             self.criterion.update_pos_weight(pos_weight=BCE_pos_weight)
 
         preds = self.forward(x)
@@ -104,7 +106,7 @@ class UNetLitModule(LightningModule):
         # update and log metrics
         self.train_loss(loss)
         self.train_metric(preds, targets)
-        
+
         self.log("train/loss", self.train_loss,
                  on_step=False, on_epoch=True, prog_bar=True)
         self.log("train/jaccard", self.train_metric,
@@ -121,7 +123,7 @@ class UNetLitModule(LightningModule):
         # update and log metrics
         self.val_loss(loss)
         self.val_metric(preds, targets)
-        
+
         self.log("val/loss", self.val_loss, on_step=False,
                  on_epoch=True, prog_bar=True)
         self.log("val/jaccard", self.val_metric,
@@ -197,5 +199,5 @@ if __name__ == "__main__":
         output = model(batch)
 
         print(f'output shape: {output.shape}')  # [1, 1, 256, 256]
-  
+
     main()
