@@ -159,3 +159,4 @@ configs/local/default.yaml
 
 # NodeJS
 node_modules/
+package-lock.json

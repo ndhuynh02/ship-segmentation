@@ -51,7 +51,7 @@
         
         const formData = new FormData();
         formData.append('image', imageFile);
-
+        
         const response = await fetch(apiEndpoint, {
           method: 'POST',
           body: formData,
@@ -62,7 +62,7 @@
         if (!response.ok) {
           throw new Error('Network response was not ok');
         }
-
+        
         const blob = await response.blob(); // Convert the binary image to a Blob
         const imageURL = URL.createObjectURL(blob); // Create a URL for the Blob
 

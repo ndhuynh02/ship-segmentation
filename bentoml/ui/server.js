@@ -1,8 +1,14 @@
-const express = require('express');
-const multer = require('multer');
-const path = require('path');
-const fetch = require('node-fetch');
-const FormData = require('form-data'); // Import the form-data library
+import express from "express";
+import multer from "multer";
+import path from "path";
+import fetch from "node-fetch";
+import FormData from "form-data"
+
+// const express = require('express');
+// const multer = require('multer');
+// const path = require('path');
+// const fetch = require('node-fetch');
+// const FormData = require('form-data'); 
 const app = express();
 const port = 4000;
 
@@ -39,7 +45,9 @@ app.post('/segment', upload.single('image'), async (req, res) => {
 // Function to process the uploaded image using BentoML API
 async function processImage(imageBuffer) {
   try {
-    const apiEndpoint = 'http://localhost:3000/segment'; // Replace with your BentoML API endpoint
+    // host.docker.internal:3000 if using docker
+    // localhost:3000 otherwise
+    const apiEndpoint = 'http://host.docker.internal:3000/segment'; // Replace with your BentoML API endpoint
     const formData = new FormData();
     formData.append('image', Buffer.from(imageBuffer), { filename: 'image.jpg' });
 
