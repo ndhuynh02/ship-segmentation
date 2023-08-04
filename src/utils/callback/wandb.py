@@ -49,6 +49,10 @@ class WandbCallback(Callback):
         image_path = os.path.join(image_path, image_id)
 
         self.sample_image = np.array(Image.open(image_path).convert("RGB"))
+        self.sample_image_height, self.sample_image_width = (
+            self.sample_image.shape[0],
+            self.sample_image.shape[1],
+        )
         dataframe = pd.read_csv(
             os.path.join(data_path, "train_ship_segmentations_v2.csv")
         )
@@ -86,7 +90,11 @@ class WandbCallback(Callback):
         pred_mask = pred_mask.squeeze(0)
         pred_mask = pred_mask.permute(1, 2, 0)
         pred_mask = pred_mask.cpu().numpy().astype(np.uint8)
-        pred_mask = cv2.resize(pred_mask, (768, 768), interpolation=cv2.INTER_CUBIC)
+        pred_mask = cv2.resize(
+            pred_mask,
+            (self.sample_image_width, self.sample_image_height),
+            interpolation=cv2.INTER_CUBIC,
+        )
 
         wandb_logger = trainer.logger
         wandb_logger.log_image(

@@ -1,3 +1,2 @@
 _target_: src.models.components.unet34.Unet34
-use_pretrained_classifier: False
-ckpt_path: ./ckpt/Classifier-768.ckpt
+ckpt_path: None
