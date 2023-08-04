@@ -1,0 +1,30 @@
+_target_: src.models.combined_module.CombinedLitModule
+defaults:
+  - cls_ckpt_path: ./ckpt/Classifier-768.ckpt
+  - smt_ckpt_path: ./ckpt/unet34-pos-weight.ckpt
+
+cls_optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 0.001
+  weight_decay: 0.0
+
+smt_optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 0.0001
+  weight_decay: 0.0
+
+cls_scheduler:
+  _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+  _partial_: true
+  mode: min
+  factor: 0.1
+  patience: 10
+
+smt_scheduler:
+  _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+  _partial_: true
+  mode: min
+  factor: 0.1
+  patience: 10
