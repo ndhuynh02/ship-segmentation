@@ -13,6 +13,7 @@ from src.data.components.airbus import AirbusDataset
 from src.data.components.transform_airbus import TransformAirbus
 
 import albumentations as A
+import copy
 
 from src.utils.airbus_utils import imshow_batch
 
@@ -101,13 +102,13 @@ class AirbusDataModule(LightningDataModule):
                 
                 train_ids_only_ship = train_ids[train_ids['counts'] != 0].copy()          
                 train_ids_only_ship.reset_index(drop=True, inplace=True)
-
+                
                 # get subset of dataset from indices
                 self.data_train = Subset(dataset, train_ids.index.to_list())
                 self.data_val = Subset(dataset, val_ids.index.to_list())
                 self.data_test = Subset(dataset, test_ids.index.to_list())
                 
-                #get subset of dataset with only ship from indices
+                # get subset of dataset with only ship from indices
                 self.data_train_only_ship = Subset(dataset, train_ids_only_ship.index.to_list())
 
                 print("Using stratified train_test_split.")
@@ -123,12 +124,7 @@ class AirbusDataModule(LightningDataModule):
                     lengths=[train_len, val_len, test_len],
                     generator=torch.Generator().manual_seed(42),
                 )
-
-                self.data_train_only_ship, _, _ = random_split(
-                    dataset=dataset,
-                    lengths=[train_len, val_len, test_len],
-                    generator=torch.Generator().manual_seed(42),
-                )
+                self.data_train_only_ship = copy.deepcopy(self.data_train)
                 print("Using random_split.")
             
             # Transform only ship data
