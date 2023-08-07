@@ -1,12 +1,9 @@
-_target_: src.models.unet_module.UNetLitModule
-defaults:
-  - criterion: lossbinary.yaml
-  - net: UNet34.yaml
+_target_: src.models.classifier_module.ResNetLitModule
 
 optimizer:
   _target_: torch.optim.Adam
   _partial_: true
-  lr: 0.0001
+  lr: 0.001
   weight_decay: 0.0
 
 scheduler:
@@ -16,4 +13,5 @@ scheduler:
   factor: 0.1
   patience: 10
 
-  
+defaults:
+  - net: resnet34.yaml

@@ -17,6 +17,7 @@ import copy
 
 from src.utils.airbus_utils import imshow_batch
 
+
 class AirbusDataModule(LightningDataModule):
     """Example of LightningDataModule for MNIST dataset.
 
@@ -76,7 +77,11 @@ class AirbusDataModule(LightningDataModule):
         """
         # load and split datasets only if not loaded already
         if not self.data_train and not self.data_val and not self.data_test:
-            dataset = AirbusDataset(data_dir=self.hparams.data_dir, undersample=self.hparams.undersample, subset=self.hparams.subset)
+            dataset = AirbusDataset(
+                data_dir=self.hparams.data_dir,
+                undersample=self.hparams.undersample,
+                subset=self.hparams.subset,
+            )
             # Try catch block for stratified splits
             try:
                 masks = dataset.dataframe
@@ -102,7 +107,7 @@ class AirbusDataModule(LightningDataModule):
                 
                 train_ids_only_ship = train_ids[train_ids['counts'] != 0].copy()          
                 train_ids_only_ship.reset_index(drop=True, inplace=True)
-                
+
                 # get subset of dataset from indices
                 self.data_train = Subset(dataset, train_ids.index.to_list())
                 self.data_val = Subset(dataset, val_ids.index.to_list())
@@ -132,11 +137,13 @@ class AirbusDataModule(LightningDataModule):
                         
             # transform original data
             self.data_train = TransformAirbus(self.data_train)
+
+            # Append transformed datasets to original datasets
+            self.data_train += self.data_train_only_ship
+            
             self.data_val = TransformAirbus(self.data_val, self.hparams.transform_val)
             self.data_test = TransformAirbus(self.data_test, self.hparams.transform_val)
                         
-            # Append transformed datasets to original datasets
-            self.data_train += self.data_train_only_ship
 
     # visualize distribution of train, val & test
     def visualize_dist(self, masks, train_ids, val_ids, test_ids):
@@ -148,30 +155,39 @@ class AirbusDataModule(LightningDataModule):
         test_df = pd.merge(masks, test_ids)
 
         # count number of times ImageId appear -> count number of ships in image
-        train_df['counts'] = train_df.apply(lambda c_row: c_row['counts'] if 
-                                isinstance(c_row['EncodedPixels'], str) else
-                                0, 1)
-        val_df['counts'] = val_df.apply(lambda c_row: c_row['counts'] if 
-                                isinstance(c_row['EncodedPixels'], str) else
-                                0, 1)
-        test_df['counts'] = test_df.apply(lambda c_row: c_row['counts'] if 
-                                isinstance(c_row['EncodedPixels'], str) else
-                                0, 1)
+        train_df["counts"] = train_df.apply(
+            lambda c_row: c_row["counts"]
+            if isinstance(c_row["EncodedPixels"], str)
+            else 0,
+            1,
+        )
+        val_df["counts"] = val_df.apply(
+            lambda c_row: c_row["counts"]
+            if isinstance(c_row["EncodedPixels"], str)
+            else 0,
+            1,
+        )
+        test_df["counts"] = test_df.apply(
+            lambda c_row: c_row["counts"]
+            if isinstance(c_row["EncodedPixels"], str)
+            else 0,
+            1,
+        )
 
         # Create a 1x3 subplot
         fig, axs = plt.subplots(1, 3, figsize=(15, 5))
 
         # Plot histogram for train_df
-        axs[0].hist(train_df['counts'], bins=15)
-        axs[0].set_title('Train Data')
+        axs[0].hist(train_df["counts"], bins=15)
+        axs[0].set_title("Train Data")
 
         # Plot histogram for val_df
-        axs[1].hist(val_df['counts'], bins=15)
-        axs[1].set_title('Validation Data')
+        axs[1].hist(val_df["counts"], bins=15)
+        axs[1].set_title("Validation Data")
 
         # Plot histogram for test_df
-        axs[2].hist(test_df['counts'], bins=15)
-        axs[2].set_title('Test Data')
+        axs[2].hist(test_df["counts"], bins=15)
+        axs[2].set_title("Test Data")
 
         # Show the plot
         plt.show()
@@ -204,28 +220,29 @@ class AirbusDataModule(LightningDataModule):
         )
 
 
-if __name__ == "__main__":  
+if __name__ == "__main__":
     import pyrootutils
     from omegaconf import DictConfig
     import hydra
 
-    path = pyrootutils.find_root(
-        search_from=__file__, indicator=".project-root")
+    path = pyrootutils.find_root(search_from=__file__, indicator=".project-root")
     config_path = str(path / "configs")
     output_path = path / "outputs"
-    print(f'config_path: {config_path}')
+    print(f"config_path: {config_path}")
     pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
- 
-    @hydra.main(version_base="1.3", config_path=config_path, config_name='train.yaml')
+
+    @hydra.main(version_base="1.3", config_path=config_path, config_name="train.yaml")
     def main(cfg: DictConfig):
         print(OmegaConf.to_yaml(cfg.data, resolve=True))
 
         airbus = hydra.utils.instantiate(cfg.data)
-        airbus.setup(visualize_dist=False) # set visualize_dist to True to see distribution of train, val & test set
+        airbus.setup(
+            visualize_dist=False
+        )  # set visualize_dist to True to see distribution of train, val & test set
 
         loader = airbus.test_dataloader()
-        img, mask = next(iter(loader))
-
+        img, mask, label, file_id = next(iter(loader))
+        print(label)
         imshow_batch(img, mask)
 
     main()
