@@ -3,21 +3,10 @@ from typing import Any, List
 import torch
 from pytorch_lightning import LightningModule
 from torchmetrics import MaxMetric, MeanMetric
-
-from src.models.components.lossbinary import LossBinary
-from torchmetrics import JaccardIndex
-
-import pandas as pd
-import numpy as np
-import os
-from PIL import Image
-import gc
-from src.data.components.airbus import AirbusDataset
-
-from src.utils.airbus_utils import mask_overlay, masks_as_image
+from torchmetrics.classification.accuracy import Accuracy
 
 
-class UNetLitModule(LightningModule):
+class ResNetLitModule(LightningModule):
     """Example of LightningModule for MNIST classification.
 
     A LightningModule organizes your PyTorch code into 6 sections:
@@ -37,23 +26,22 @@ class UNetLitModule(LightningModule):
         net: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
-        criterion: torch.nn.Module
     ):
         super().__init__()
 
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
-        self.save_hyperparameters(logger=False, ignore=["net", "criterion"])
+        self.save_hyperparameters(logger=False, ignore=["net"])
 
         self.net = net
 
         # loss function
-        self.criterion = criterion
+        self.criterion = torch.nn.BCEWithLogitsLoss()
 
         # metric objects for calculating and averaging accuracy across batches
-        self.train_metric = JaccardIndex(task="binary", num_classes=2)
-        self.val_metric = JaccardIndex(task="binary", num_classes=2)
-        self.test_metric = JaccardIndex(task="binary", num_classes=2)
+        self.train_acc = Accuracy(task="binary")
+        self.val_acc = Accuracy(task="binary")
+        self.test_acc = Accuracy(task="binary")
 
         # for averaging loss across batches
         self.train_loss = MeanMetric()
@@ -61,7 +49,7 @@ class UNetLitModule(LightningModule):
         self.test_loss = MeanMetric()
 
         # for tracking best so far validation accuracy
-        self.val_metric_best = MaxMetric()
+        self.val_acc_best = MaxMetric()
 
     def forward(self, x: torch.Tensor):
         return self.net(x)
@@ -70,32 +58,14 @@ class UNetLitModule(LightningModule):
         # by default lightning executes validation step sanity checks before training starts,
         # so it's worth to make sure validation metrics don't store results from these checks
         self.val_loss.reset()
-        self.val_metric.reset()
-        self.val_metric_best.reset()
+        self.val_acc.reset()
+        self.val_acc_best.reset()
 
     def model_step(self, batch: Any):
-        x, y, id = batch[0], batch[1], batch[3]
-
-        if (isinstance(self.criterion, LossBinary)):
-            cnt1 = (y == 1).sum().item()  # count number of class 1 in image
-            cnt0 = y.numel() - cnt1
-            if cnt1 != 0:
-                BCE_pos_weight = torch.FloatTensor(
-                    [1.0 * cnt0 / cnt1]).to(device=self.device)
-            else:
-                BCE_pos_weight = torch.FloatTensor(
-                    [1.0]).to(device=self.device)
-                
-            self.criterion.update_pos_weight(pos_weight=BCE_pos_weight)
-
+        x, y = batch[0], batch[2]
+        y = y.float().unsqueeze(1)
         preds = self.forward(x)
         loss = self.criterion(preds, y)
-
-        # Code to try to fix CUDA out of memory issues
-        del x
-        gc.collect()
-        torch.cuda.empty_cache()
-
         return loss, preds, y
 
     def training_step(self, batch: Any, batch_idx: int):
@@ -103,55 +73,47 @@ class UNetLitModule(LightningModule):
 
         # update and log metrics
         self.train_loss(loss)
-        self.train_metric(preds, targets)
-        
-        self.log("train/loss", self.train_loss,
-                 on_step=False, on_epoch=True, prog_bar=True)
-        self.log("train/jaccard", self.train_metric,
-                 on_step=False, on_epoch=True, prog_bar=True)
+        self.train_acc(preds, targets)
+        self.log(
+            "train/loss", self.train_loss, on_step=False, on_epoch=True, prog_bar=True
+        )
+        self.log(
+            "train/acc", self.train_acc, on_step=False, on_epoch=True, prog_bar=True
+        )
 
         # we can return here dict with any tensors
         # and then read it in some callback or in `training_epoch_end()` below
         # remember to always return loss from `training_step()` or backpropagation will fail!
-        return {"loss": loss}
+        return {"loss": loss, "preds": preds, "targets": targets}
 
     def validation_step(self, batch: Any, batch_idx: int):
         loss, preds, targets = self.model_step(batch)
 
         # update and log metrics
         self.val_loss(loss)
-        self.val_metric(preds, targets)
-
+        self.val_acc(preds, targets)
         self.log("val/loss", self.val_loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log(
-            "val/jaccard",
-            self.val_metric,
-            on_step=False,
-            on_epoch=True,
-            prog_bar=True,
-        )
+        self.log("val/acc", self.val_acc, on_step=False, on_epoch=True, prog_bar=True)
 
         return {"loss": loss, "preds": preds, "targets": targets}
 
     def validation_epoch_end(self, outputs: List[Any]):
-        acc = self.val_metric.compute()  # get current val acc
-        self.val_metric_best(acc)  # update best so far val acc
+        acc = self.val_acc.compute()  # get current val acc
+        self.val_acc_best(acc)  # update best so far val acc
         # log `val_acc_best` as a value through `.compute()` method, instead of as a metric object
         # otherwise metric would be reset by lightning after each epoch
-        self.log("val/jaccard_best",
-                 self.val_metric_best.compute(), prog_bar=True)
+        self.log("val/acc_best", self.val_acc_best.compute(), prog_bar=True)
 
     def test_step(self, batch: Any, batch_idx: int):
         loss, preds, targets = self.model_step(batch)
 
         # update and log metrics
         self.test_loss(loss)
-        self.test_metric(preds, targets)
-
-        self.log("test/loss", self.test_loss, on_step=False,
-                 on_epoch=True, prog_bar=True)
-        self.log("test/jaccard", self.test_metric,
-                 on_step=False, on_epoch=True, prog_bar=True)
+        self.test_acc(preds, targets)
+        self.log(
+            "test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True
+        )
+        self.log("test/acc", self.test_acc, on_step=False, on_epoch=True, prog_bar=True)
 
         return {"loss": loss, "preds": preds, "targets": targets}
 
@@ -183,11 +145,8 @@ if __name__ == "__main__":
     import hydra
 
     # find paths
-    pyrootutils.setup_root(
-        __file__, indicator=".project-root", pythonpath=True)
-    path = pyrootutils.find_root(
-        search_from=__file__, indicator=".project-root")
-
+    pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
+    path = pyrootutils.find_root(search_from=__file__, indicator=".project-root")
     config_path = str(path / "configs")
     print(f"project-root: {path}")
     print(f"config path: {config_path}")
@@ -199,7 +158,6 @@ if __name__ == "__main__":
         model = hydra.utils.instantiate(cfg.model)
         batch = torch.rand(1, 3, 256, 256)
         output = model(batch)
+        print(f"output shape: {output.shape}")
 
-        print(f'output shape: {output.shape}')  # [1, 1, 256, 256]
-  
     main()
