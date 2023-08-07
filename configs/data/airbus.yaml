@@ -5,8 +5,9 @@ defaults:
   - transform_val: default.yaml
 
 data_dir: ${paths.data_dir}/airbus
-batch_size: 1 
-train_val_test_split: [0.3, 0.05, 0.05]
-num_workers: 8
+batch_size: 4 
+train_val_test_split: [0.2, 0.7, 0.1]
+num_workers: 2
 pin_memory: False
-
+undersample: 140000 # number of non-ship images to remove
+subset: 10000 # set to 0 to use all datas
