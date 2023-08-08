@@ -1,6 +1,6 @@
 _target_: src.models.unet_module.UNetLitModule
 defaults:
-  - criterion: lossbinary.yaml
+  - criterion: lovasz_loss.yaml
   - net: UNet34.yaml
 
 optimizer:
