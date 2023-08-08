@@ -30,80 +30,49 @@
       position: relative;
     }
 
-    #inputImage, #resultMask {
+    #inputImage, #anotateMask {
       position: absolute;
       top: 0;
       left: 0;
     }
 
-    #resultMask {
+    #anotateMask {
       display: block;
-      z-index: 1; /* Set a higher z-index to place it above the jpg-image */
+      z-index: 1; 
       opacity: 0.5;
     }
 
-     /* The switch - the box around the slider */
-    .switch {
-      position: relative;
-      display: inline-block;
-      width: 60px;
-      height: 34px;
+    .slider-pic {
+      -webkit-appearance: none;
+      /* width: 100%; */
+      height: 15px;
+      border-radius: 5px;
+      background: #d3d3d3;
+      outline: none;
+      opacity:0.7;
+      -webkit-transition: opacity .15s ease-in-out;
+      transition: opacity .15s ease-in-out;
     }
-
-    /* Hide default HTML checkbox */
-    .switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
+    .slider-pic:hover {
+      opacity:1;
     }
-
-    /* The slider */
-    .slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: #ccc;
-      -webkit-transition: .4s;
-      transition: .4s;
-    }
-
-    .slider:before {
-      position: absolute;
-      content: "";
-      height: 26px;
-      width: 26px;
-      left: 4px;
-      bottom: 4px;
-      background-color: white;
-      -webkit-transition: .4s;
-      transition: .4s;
-    }
-
-    input:checked + .slider {
-      background-color: #2196F3;
-    }
-
-    input:focus + .slider {
-      box-shadow: 0 0 1px #2196F3;
-    }
-
-    input:checked + .slider:before {
-      -webkit-transform: translateX(26px);
-      -ms-transform: translateX(26px);
-      transform: translateX(26px);
-    }
-
-    /* Rounded sliders */
-    .slider.round {
-      border-radius: 34px;
-    }
-
-    .slider.round:before {
+    .slider-pic::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 25px;
+      height: 25px;
       border-radius: 50%;
-    } 
+      background: #00c3ff;
+      cursor: pointer;
+    }
+    .slider-pic::-moz-range-thumb {
+      width: 25px;
+      height: 25px;
+      border: 0;
+      border-radius: 50%;
+      background: #00c3ff;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -115,13 +84,11 @@
   <div id="resultImageContainer" style="display: none;">
     <h2>Processed Image</h2>
     <input type="color" id="colorPicker" value="#00ff00">
-    <label class="switch">
-      <input type="checkbox" id="toggleSwitch" value="checked">
-      <span class="slider round"></span>
-    </label>
+    <input type="range" min="0" max="10" value="5" class="slider-pic" id="transparentMask">
     <div class="wrappedImage">
-      <img id="resultMask">
+      <img id="resultMask" style="display: none;">
       <img id="inputImage">
+      <canvas id="anotateMask" class="anotate-mask"></canvas>
     </div>
   </div>
 
@@ -130,6 +97,12 @@
 
   <script>
     const apiEndpoint = 'http://0.0.0.0:4000/segment';
+
+    const colorPicker = document.getElementById('colorPicker');
+
+    // Get the canvas and its context
+    const anotateMask = document.getElementById('anotateMask');
+    const ctx = anotateMask.getContext('2d');
 
     async function postImageToApi(imageFile) {
       try {
@@ -157,13 +130,19 @@
         resultMask.src = imageURL; // Set the image source using the URL
 
         const inputImage = document.getElementById('inputImage');
+        inputImage.onload = function() {
+          // Set the canvas dimensions
+          anotateMask.width = inputImage.width;
+          anotateMask.height = inputImage.height;
+          applyProcessedColor(colorPicker.value);
+        }
         inputImage.src = URL.createObjectURL(imageFile)
 
         const resultImageContainer = document.getElementById('resultImageContainer');
         resultImageContainer.style.display = 'block';
 
-        const toggleSwitch = document.getElementById('toggleSwitch')
-        toggleSwitch.checked = true
+        const transparentMask = document.getElementById('transparentMask')
+        resultMask.style.opacity = transparentMask.value / 10
 
         console.log('Image uploaded and processed successfully.');
       } catch (error) {
@@ -186,12 +165,47 @@
       }
     });
 
-    toggleSwitch.addEventListener('change', function() {
-      if (this.checked) {
-        resultMask.style.display = 'block';
-      } else {
-        resultMask.style.display = 'none';
+    // Function to apply the selected color to the processed image
+    function applyProcessedColor(selectedColor) {
+      // Draw the uploaded image onto the canvas
+      ctx.drawImage(resultMask, 0, 0);
+
+      // Get the pixel data from the canvas
+      const imageData = ctx.getImageData(0, 0, anotateMask.width, anotateMask.height);
+
+      // Get the RGB components of the selected color
+      const selectedColorRGB = hexToRGB(selectedColor);
+      console.log(imageData)
+      // Loop through the pixel data and replace old-colored pixels with selected color
+      for (let i = 0; i < imageData.data.length; i += 4) {
+        if (imageData.data[i + 3] > 0) {
+          imageData.data[i] = selectedColorRGB.r;
+          imageData.data[i + 1] = selectedColorRGB.g;
+          imageData.data[i + 2] = selectedColorRGB.b;
+        }
       }
+
+      // Put the modified pixel data back onto the canvas
+      ctx.putImageData(imageData, 0, 0);
+    }
+
+    // Function to convert hex color to RGB components
+    function hexToRGB(hex) {
+      const bigint = parseInt(hex.slice(1), 16);
+      const r = (bigint >> 16) & 255;
+      const g = (bigint >> 8) & 255;
+      const b = bigint & 255;
+      return { r, g, b };
+    }
+
+    // Listen for color picker changes
+    colorPicker.addEventListener('input', () => {
+      applyProcessedColor(colorPicker.value);
+    });
+
+    transparentMask.addEventListener('input', function() {
+      anotateMask.style.opacity = this.value / 10;
+      transparentMask.style.b
     });
   </script>
 </body>
