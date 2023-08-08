@@ -2,10 +2,6 @@
 pytorch-lightning #==1.9.2
 torchmetrics #>=0.11.4
 
-# --------- clearml ----------#
-clearml #==1.11.0
-clearml-serving #==1.3.0
-
 # --------- ---------------#
 pandas #==2.0.2
 matplotlib #==3.7.1
