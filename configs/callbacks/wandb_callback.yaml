@@ -1,5 +1,5 @@
 wandb_callback:
-  _target_: src.utils.callback.wandb.WandbCallback
+  _target_: src.utils.callback.wandb.WandbCallbackTrain
   image_id: "0006c52e8.jpg"
   data_path: ${paths.data_dir}/airbus
   n_images_to_log: 5
