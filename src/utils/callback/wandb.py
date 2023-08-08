@@ -175,8 +175,13 @@ class WandbCallback(Callback):
 
 class WandbCallbackTrain(Callback):
     def __init__(self, image_id: str = '003b48a9e.jpg', data_path: str = 'data/airbus', n_images_to_log: int = 5):
+        self.dataframe = pd.read_csv(os.path.join(data_path, 'train_ship_segmentations_v2.csv'))
         self.good_dataframe = pd.read_csv(os.path.join('data_csv', 'good_images.csv'))
         self.bad_dataframe = pd.read_csv(os.path.join('data_csv', 'bad_images.csv'))
+        self.transform = Compose([
+            A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            ToTensorV2(),
+        ])
 
     def on_train_epoch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"):
         wandb_logger = trainer.logger
@@ -268,11 +273,17 @@ class WandbCallbackTrain(Callback):
         for i in range(5):
             stack_bad_pred = torch.stack(list_error_pred[i])
             stack_bad_real = torch.stack(list_error_real[i])
-            grid_bad_pred = make_grid(stack_bad_pred, nrow=len(list_error_pred[i]))
-            grid_bad_real = make_grid(stack_bad_real, nrow=len(list_error_real[i]))
+            grid_bad_pred = make_grid(stack_bad_pred, nrow= len(list_error_pred[i]))
+            grid_bad_real = make_grid(stack_bad_real, nrow= len(list_error_real[i]))
             grid_bad_pred_np = grid_bad_pred.numpy().transpose(1, 2, 0)
             grid_bad_real_np = grid_bad_real.numpy().transpose(1, 2, 0)
             grid_bad_pred_np = Image.fromarray(grid_bad_pred_np)    
             grid_bad_real_np = Image.fromarray(grid_bad_real_np)
+            messages = [
+                'thuyền dính vào nhau',
+                'nhận nhầm thuyền',
+                'thuyền nhỏ chưa detect được',
+                'thuyền mờ không detect được',
+                'detect không hết thuyền']
                         
-            wandb_logger.log_image(key='error type ' + str(i + 1), images=[grid_bad_pred_np, grid_bad_real_np], caption=["-predict-bad", "-ground-truth-bad"])        
+            wandb_logger.log_image(key='error type ' + str(i + 1) + ': ' + messages[i], images=[grid_bad_pred_np, grid_bad_real_np], caption=["-predict-bad", "-ground-truth-bad"])        
