@@ -6,7 +6,9 @@ from albumentations import Compose
 from albumentations.pytorch.transforms import ToTensorV2
 
 import bentoml
-from bentoml.io import Image
+from bentoml.io import Image, File
+
+from PIL import Image as pilImage
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -38,7 +40,13 @@ def mask_overlay(image, mask, color=(0, 1, 0)):
     img[ind] = weighted_sum[ind]    
     return img
 
-@ship_segment.api(input=Image(), output=Image())
+def transparentBackground(mask, color=(0, 255, 0)):
+    mask = mask.squeeze() # (786, 768)
+    alpha = ((mask > 0) * 255).astype(np.uint8)
+    mask = np.dstack((mask, mask, mask)) * np.array(color, dtype=np.uint8) # (768, 768, 3)
+    return pilImage.fromarray(np.dstack((mask, alpha)), mode="RGBA")
+
+@ship_segment.api(input=Image(), output=Image(pilmode='RGBA', mime_type="image/png"))
 def segment(input_image):
     print('Segmenting')
     input_image = np.array(input_image)
@@ -50,4 +58,4 @@ def segment(input_image):
 
     mask = cv2.resize(mask, (input_image.shape[1], input_image.shape[0]))
 
-    return mask_overlay(input_image, mask) 
+    return transparentBackground(mask)    

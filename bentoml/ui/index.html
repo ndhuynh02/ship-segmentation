@@ -25,6 +25,85 @@
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
+
+    .wrappedImage {
+      position: relative;
+    }
+
+    #inputImage, #resultMask {
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    #resultMask {
+      display: block;
+      z-index: 1; /* Set a higher z-index to place it above the jpg-image */
+      opacity: 0.5;
+    }
+
+     /* The switch - the box around the slider */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 60px;
+      height: 34px;
+    }
+
+    /* Hide default HTML checkbox */
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    /* The slider */
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      -webkit-transition: .4s;
+      transition: .4s;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 26px;
+      width: 26px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      -webkit-transition: .4s;
+      transition: .4s;
+    }
+
+    input:checked + .slider {
+      background-color: #2196F3;
+    }
+
+    input:focus + .slider {
+      box-shadow: 0 0 1px #2196F3;
+    }
+
+    input:checked + .slider:before {
+      -webkit-transform: translateX(26px);
+      -ms-transform: translateX(26px);
+      transform: translateX(26px);
+    }
+
+    /* Rounded sliders */
+    .slider.round {
+      border-radius: 34px;
+    }
+
+    .slider.round:before {
+      border-radius: 50%;
+    } 
   </style>
 </head>
 <body>
@@ -35,7 +114,15 @@
   </form>
   <div id="resultImageContainer" style="display: none;">
     <h2>Processed Image</h2>
-    <img id="resultImage" style="max-width: 75%;" alt="Processed Image">
+    <input type="color" id="colorPicker" value="#00ff00">
+    <label class="switch">
+      <input type="checkbox" id="toggleSwitch" value="checked">
+      <span class="slider round"></span>
+    </label>
+    <div class="wrappedImage">
+      <img id="resultMask">
+      <img id="inputImage">
+    </div>
   </div>
 
   <!-- Add the loading wheel element -->
@@ -66,11 +153,17 @@
         const blob = await response.blob(); // Convert the binary image to a Blob
         const imageURL = URL.createObjectURL(blob); // Create a URL for the Blob
 
-        const resultImage = document.getElementById('resultImage');
-        resultImage.src = imageURL; // Set the image source using the URL
+        const resultMask = document.getElementById('resultMask');
+        resultMask.src = imageURL; // Set the image source using the URL
+
+        const inputImage = document.getElementById('inputImage');
+        inputImage.src = URL.createObjectURL(imageFile)
 
         const resultImageContainer = document.getElementById('resultImageContainer');
         resultImageContainer.style.display = 'block';
+
+        const toggleSwitch = document.getElementById('toggleSwitch')
+        toggleSwitch.checked = true
 
         console.log('Image uploaded and processed successfully.');
       } catch (error) {
@@ -90,6 +183,14 @@
         await postImageToApi(file);
       } else {
         alert('Please select an image file.');
+      }
+    });
+
+    toggleSwitch.addEventListener('change', function() {
+      if (this.checked) {
+        resultMask.style.display = 'block';
+      } else {
+        resultMask.style.display = 'none';
       }
     });
   </script>

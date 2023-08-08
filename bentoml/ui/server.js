@@ -1,6 +1,5 @@
 import express from "express";
 import multer from "multer";
-import path from "path";
 import fetch from "node-fetch";
 import FormData from "form-data"
 
@@ -36,7 +35,7 @@ app.post('/segment', upload.single('image'), async (req, res) => {
     if (!processedImage) {
       res.status(500).json({ error: 'Failed to process the image.' });
     } else {
-      res.contentType('image/jpeg'); // Set the content type to indicate it's an image
+      res.contentType('image/png'); // Set the content type to indicate it's an image
       res.end(processedImage); // Send the processed image as a binary response
     }
   }
@@ -47,7 +46,7 @@ async function processImage(imageBuffer) {
   try {
     // host.docker.internal:3000 if using docker
     // localhost:3000 otherwise
-    const apiEndpoint = 'http://host.docker.internal:3000/segment'; // Replace with your BentoML API endpoint
+    const apiEndpoint = 'http://localhost:3000/segment'; // Replace with your BentoML API endpoint
     const formData = new FormData();
     formData.append('image', Buffer.from(imageBuffer), { filename: 'image.jpg' });
 
