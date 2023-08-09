@@ -1,0 +1,15 @@
+version: '3.8'
+services:
+  bentoml_api: 
+    image: airbus-segmentation:tzu75kbwrgbtnq6e
+    container_name: airbus-api
+    environment:
+      - BENTOML_PORT=4000
+    ports:
+      - 4000:4000
+  nodejs_ui:
+    build: .
+    image: airbus-nodejs
+    container_name: airbus-ui
+    ports:
+      - 4001:4001

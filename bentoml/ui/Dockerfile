@@ -10,4 +10,4 @@ COPY server.js .
 
 CMD [ "node", "server.js" ]
 
-EXPOSE 4000
+EXPOSE 4001

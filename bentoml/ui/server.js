@@ -9,7 +9,7 @@ import FormData from "form-data"
 // const fetch = require('node-fetch');
 // const FormData = require('form-data'); 
 const app = express();
-const port = 4000;
+const port = 4001;
 
 // Set up storage for uploaded images using Multer with memory storage
 const upload = multer({ storage: multer.memoryStorage() });
@@ -46,7 +46,7 @@ async function processImage(imageBuffer) {
   try {
     // host.docker.internal:3000 if using docker
     // localhost:3000 otherwise
-    const apiEndpoint = 'http://localhost:3000/segment'; // Replace with your BentoML API endpoint
+    const apiEndpoint = 'http://host.docker.internal:4000/segment'; // Replace with your BentoML API endpoint
     const formData = new FormData();
     formData.append('image', Buffer.from(imageBuffer), { filename: 'image.jpg' });
 
