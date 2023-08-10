@@ -76,7 +76,7 @@ class UNetLitModule(LightningModule):
         self.val_metric_best.reset()
 
     def model_step(self, batch: Any):
-        x, y, id = batch
+        x, y, id = batch[0], batch[1], batch[3]
 
         if (isinstance(self.criterion, (LossBinary, BCE_Lovasz))):
             cnt1 = (y == 1).sum().item()  # count number of class 1 in image
@@ -115,7 +115,7 @@ class UNetLitModule(LightningModule):
         # we can return here dict with any tensors
         # and then read it in some callback or in `training_epoch_end()` below
         # remember to always return loss from `training_step()` or backpropagation will fail!
-        return {"loss": loss, "preds": preds, "targets": targets}
+        return {"loss": loss}
 
     def validation_step(self, batch: Any, batch_idx: int):
         loss, preds, targets = self.model_step(batch)
@@ -123,7 +123,7 @@ class UNetLitModule(LightningModule):
         # update and log metrics
         self.val_loss(loss)
         self.val_metric(preds, targets)
-
+        
         self.log("val/loss", self.val_loss, on_step=False,
                  on_epoch=True, prog_bar=True)
         self.log("val/jaccard", self.val_metric,

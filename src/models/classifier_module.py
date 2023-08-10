@@ -6,7 +6,7 @@ from torchmetrics import MaxMetric, MeanMetric
 from torchmetrics.classification.accuracy import Accuracy
 
 
-class MNISTLitModule(LightningModule):
+class ResNetLitModule(LightningModule):
     """Example of LightningModule for MNIST classification.
 
     A LightningModule organizes your PyTorch code into 6 sections:
@@ -31,17 +31,17 @@ class MNISTLitModule(LightningModule):
 
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
-        self.save_hyperparameters(logger=False)
+        self.save_hyperparameters(logger=False, ignore=["net"])
 
         self.net = net
 
         # loss function
-        self.criterion = torch.nn.CrossEntropyLoss()
+        self.criterion = torch.nn.BCEWithLogitsLoss()
 
         # metric objects for calculating and averaging accuracy across batches
-        self.train_acc = Accuracy(task="multiclass", num_classes=10)
-        self.val_acc = Accuracy(task="multiclass", num_classes=10)
-        self.test_acc = Accuracy(task="multiclass", num_classes=10)
+        self.train_acc = Accuracy(task="binary")
+        self.val_acc = Accuracy(task="binary")
+        self.test_acc = Accuracy(task="binary")
 
         # for averaging loss across batches
         self.train_loss = MeanMetric()
@@ -62,10 +62,10 @@ class MNISTLitModule(LightningModule):
         self.val_acc_best.reset()
 
     def model_step(self, batch: Any):
-        x, y = batch
-        logits = self.forward(x)
-        loss = self.criterion(logits, y)
-        preds = torch.argmax(logits, dim=1)
+        x, y = batch[0], batch[2]
+        y = y.float().unsqueeze(1)
+        preds = self.forward(x)
+        loss = self.criterion(preds, y)
         return loss, preds, y
 
     def training_step(self, batch: Any, batch_idx: int):
@@ -85,18 +85,6 @@ class MNISTLitModule(LightningModule):
         # and then read it in some callback or in `training_epoch_end()` below
         # remember to always return loss from `training_step()` or backpropagation will fail!
         return {"loss": loss, "preds": preds, "targets": targets}
-
-    def training_epoch_end(self, outputs: List[Any]):
-        # `outputs` is a list of dicts returned from `training_step()`
-
-        # Warning: when overriding `training_epoch_end()`, lightning accumulates outputs from all batches of the epoch
-        # this may not be an issue when training on mnist
-        # but on larger datasets/models it's easy to run into out-of-memory errors
-
-        # consider detaching tensors before returning them from `training_step()`
-        # or using `on_train_epoch_end()` instead which doesn't accumulate outputs
-
-        pass
 
     def validation_step(self, batch: Any, batch_idx: int):
         loss, preds, targets = self.model_step(batch)
@@ -129,9 +117,6 @@ class MNISTLitModule(LightningModule):
 
         return {"loss": loss, "preds": preds, "targets": targets}
 
-    def test_epoch_end(self, outputs: List[Any]):
-        pass
-
     def configure_optimizers(self):
         """Choose what optimizers and learning-rate schedulers to use in your optimization.
         Normally you'd need one. But in the case of GANs or similar you might have multiple.
@@ -155,4 +140,24 @@ class MNISTLitModule(LightningModule):
 
 
 if __name__ == "__main__":
-    _ = MNISTLitModule(None, None, None)
+    import pyrootutils
+    from omegaconf import DictConfig, OmegaConf
+    import hydra
+
+    # find paths
+    pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
+    path = pyrootutils.find_root(search_from=__file__, indicator=".project-root")
+    config_path = str(path / "configs")
+    print(f"project-root: {path}")
+    print(f"config path: {config_path}")
+
+    @hydra.main(version_base="1.3", config_path=config_path, config_name="train.yaml")
+    def main(cfg: DictConfig):
+        print(f"config: \n {OmegaConf.to_yaml(cfg.model, resolve=True)}")
+
+        model = hydra.utils.instantiate(cfg.model)
+        batch = torch.rand(1, 3, 256, 256)
+        output = model(batch)
+        print(f"output shape: {output.shape}")
+
+    main()
