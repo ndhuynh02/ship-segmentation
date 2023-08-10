@@ -24,7 +24,7 @@ from src.utils.airbus_utils import mask_overlay, masks_as_image
 
 
 class WandbCallback(Callback):
-    def __init__(self, image_id: str = '003b48a9e.jpg', data_path: str = 'data/airbus', n_images_to_log: int = 5):
+    def __init__(self, image_id: str = '003b48a9e.jpg', data_path: str = 'data/airbus', n_images_to_log: int = 5, img_size: int = 384):
         self.n_images_to_log = n_images_to_log  # number of logged images when eval
 
         self.eight_val_preds = []
@@ -174,7 +174,7 @@ class WandbCallback(Callback):
             self.n_images_to_log -= 1
 
 class WandbCallbackTrain(Callback):
-    def __init__(self, image_id: str = '003b48a9e.jpg', data_path: str = 'data/airbus', n_images_to_log: int = 5):
+    def __init__(self, image_id: str = '003b48a9e.jpg', data_path: str = 'data/airbus', n_images_to_log: int = 5, img_size: int = 384):
         self.dataframe = pd.read_csv(os.path.join(data_path, 'train_ship_segmentations_v2.csv'))
         self.good_dataframe = pd.read_csv(os.path.join('data_csv', 'good_images.csv'))
         self.bad_dataframe = pd.read_csv(os.path.join('data_csv', 'bad_images.csv'))
