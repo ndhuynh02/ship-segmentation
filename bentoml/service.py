@@ -10,7 +10,7 @@ from bentoml.io import Image
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-runner = bentoml.torchscript.get("unet-torchscript:ft6duzboccv2iz56").to_runner()
+runner = bentoml.torchscript.get(bentoml.models.list()[0].tag).to_runner()
 
 ship_segment = bentoml.Service(
     "airbus-segmentation",
