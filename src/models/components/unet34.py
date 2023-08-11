@@ -1,9 +1,7 @@
 import torch
-from torch.nn import Module
 import torch.nn.functional as F
 from torchvision.models import resnet34, resnet50, ResNet34_Weights, ResNet50_Weights
 from src.models.components.resnet34 import ResNet34_Binary
-from src.models.classifier_module import ResNetLitModule
 
 
 class UNet_Up_Block(torch.nn.Module):
@@ -44,9 +42,7 @@ class Unet34(torch.nn.Module):
                 net=ResNet34_Binary(),
                 criterion=torch.nn.BCEWithLogitsLoss(),
             ).net
-            p_rn34_feature_extractor = torch.nn.Sequential(
-                *list(model.rn.children())[:-2]
-            )
+            p_rn34_feature_extractor = torch.nn.Sequential(*list(model.rn.children())[:-2])
             self.rn = p_rn34_feature_extractor
             print("Using pretrained classifier")
         else:

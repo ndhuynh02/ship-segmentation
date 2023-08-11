@@ -1,18 +1,15 @@
-import hydra
-from omegaconf import DictConfig, OmegaConf
-
 from typing import Optional, Tuple
 
+import albumentations as A
+import hydra
 import torch
+from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import LightningDataModule
-from torch.utils.data import DataLoader, Dataset, Subset, random_split
 from sklearn.model_selection import train_test_split
+from torch.utils.data import DataLoader, Dataset, Subset, random_split
 
 from src.data.components.airbus import AirbusDataset
 from src.data.components.transform_airbus import TransformAirbus
-
-import albumentations as A
-
 from src.utils.airbus_utils import imshow_batch
 
 
@@ -96,16 +93,13 @@ class AirbusDataModule(LightningDataModule):
                     valid_and_test_ids,
                     train_size=self.hparams.train_val_test_split[1]
                     / (
-                        self.hparams.train_val_test_split[1]
-                        + self.hparams.train_val_test_split[2]
+                        self.hparams.train_val_test_split[1] + self.hparams.train_val_test_split[2]
                     ),
                     stratify=valid_and_test_ids["counts"],
                     shuffle=True,
                     random_state=42,
                 )
-                assert len(train_ids) + len(val_ids) + len(test_ids) == len(
-                    unique_img_ids
-                )
+                assert len(train_ids) + len(val_ids) + len(test_ids) == len(unique_img_ids)
 
                 if visualize_dist:
                     self.visualize_dist(masks, train_ids, val_ids, test_ids)
@@ -130,16 +124,14 @@ class AirbusDataModule(LightningDataModule):
 
                 print("Using random_split.")
             # create transform dataset from subset
-            self.data_train = TransformAirbus(
-                self.data_train, self.hparams.transform_train
-            )
+            self.data_train = TransformAirbus(self.data_train, self.hparams.transform_train)
             self.data_val = TransformAirbus(self.data_val, self.hparams.transform_val)
             self.data_test = TransformAirbus(self.data_test, self.hparams.transform_val)
 
     # visualize distribution of train, val & test
     def visualize_dist(self, masks, train_ids, val_ids, test_ids):
-        import pandas as pd
         import matplotlib.pyplot as plt
+        import pandas as pd
 
         train_df = pd.merge(masks, train_ids)
         val_df = pd.merge(masks, val_ids)
@@ -147,21 +139,15 @@ class AirbusDataModule(LightningDataModule):
 
         # count number of times ImageId appear -> count number of ships in image
         train_df["counts"] = train_df.apply(
-            lambda c_row: c_row["counts"]
-            if isinstance(c_row["EncodedPixels"], str)
-            else 0,
+            lambda c_row: c_row["counts"] if isinstance(c_row["EncodedPixels"], str) else 0,
             1,
         )
         val_df["counts"] = val_df.apply(
-            lambda c_row: c_row["counts"]
-            if isinstance(c_row["EncodedPixels"], str)
-            else 0,
+            lambda c_row: c_row["counts"] if isinstance(c_row["EncodedPixels"], str) else 0,
             1,
         )
         test_df["counts"] = test_df.apply(
-            lambda c_row: c_row["counts"]
-            if isinstance(c_row["EncodedPixels"], str)
-            else 0,
+            lambda c_row: c_row["counts"] if isinstance(c_row["EncodedPixels"], str) else 0,
             1,
         )
 
@@ -212,9 +198,9 @@ class AirbusDataModule(LightningDataModule):
 
 
 if __name__ == "__main__":
+    import hydra
     import pyrootutils
     from omegaconf import DictConfig
-    import hydra
 
     path = pyrootutils.find_root(search_from=__file__, indicator=".project-root")
     config_path = str(path / "configs")
