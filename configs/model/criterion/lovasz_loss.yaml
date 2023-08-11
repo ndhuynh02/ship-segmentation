@@ -1,4 +1,1 @@
-_target_ : src.models.components.lovasz_loss.LovaszLoss
-
-
-
+_target_: src.models.components.lovasz_loss.LovaszLoss

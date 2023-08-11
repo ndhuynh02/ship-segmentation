@@ -3,19 +3,19 @@ defaults:
   - model_summary.yaml
   - early_stopping.yaml
   - rich_progress_bar.yaml
-  - wandb_callback.yaml
+  - wandb_combined_callback.yaml
   - _self_
 
 model_checkpoint:
   dirpath: ${paths.output_dir}/checkpoints
   filename: "epoch_{epoch:03d}"
-  monitor: "val/jaccard"
+  monitor: "smt/val/jaccard"
   mode: "max"
   save_last: True
   auto_insert_metric_name: False
 
 early_stopping:
-  monitor: "val/jaccard"
+  monitor: "smt/val/jaccard"
   patience: 10
   mode: "max"
 

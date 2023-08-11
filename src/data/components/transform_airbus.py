@@ -1,25 +1,21 @@
-from torch.utils.data import Dataset
-from src.data.components.airbus import AirbusDataset
-
-import torch
-
-import albumentations as A
-from albumentations import Compose
-from albumentations.pytorch.transforms import ToTensorV2
-
 from typing import Any, Optional
 
-import numpy as np
+import albumentations as A
 import matplotlib.pyplot as plt
+import numpy as np
+import torch
+from albumentations import Compose
+from albumentations.pytorch.transforms import ToTensorV2
+from torch.utils.data import Dataset
+
+from src.data.components.airbus import AirbusDataset
 
 
 class TransformAirbus(Dataset):
     mean = None
     std = None
 
-    def __init__(
-        self, dataset: AirbusDataset, transform: Optional[Compose] = None
-    ) -> None:
+    def __init__(self, dataset: AirbusDataset, transform: Optional[Compose] = None) -> None:
         super().__init__()
 
         self.dataset = dataset
