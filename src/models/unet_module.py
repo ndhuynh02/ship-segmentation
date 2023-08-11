@@ -68,7 +68,7 @@ class UNetLitModule(LightningModule):
     def model_step(self, batch: Any):
         x, y, id = batch[0], batch[1], batch[3]
 
-        if (isinstance(self.criterion, (LossBinary, BCE_Lovasz))):
+        if isinstance(self.criterion, (LossBinary, BCE_Lovasz)):
             cnt1 = (y == 1).sum().item()  # count number of class 1 in image
             cnt0 = y.numel() - cnt1
             if cnt1 != 0:
@@ -109,11 +109,9 @@ class UNetLitModule(LightningModule):
         # update and log metrics
         self.val_loss(loss)
         self.val_metric(preds, targets)
-        
-        self.log("val/loss", self.val_loss, on_step=False,
-                 on_epoch=True, prog_bar=True)
-        self.log("val/jaccard", self.val_metric,
-                 on_step=False, on_epoch=True, prog_bar=True)
+
+        self.log("val/loss", self.val_loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("val/jaccard", self.val_metric, on_step=False, on_epoch=True, prog_bar=True)
 
         return {"loss": loss, "preds": preds, "targets": targets}
 
