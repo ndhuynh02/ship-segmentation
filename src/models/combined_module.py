@@ -1,27 +1,22 @@
+import gc
+import os
 from typing import Any, List
 
+import numpy as np
+import pandas as pd
 import torch
+from PIL import Image
 from pytorch_lightning import LightningModule
-from torchmetrics import MaxMetric, MeanMetric
-
-from src.models.components.lossbinary import LossBinary
-from torchmetrics import JaccardIndex
+from torchmetrics import JaccardIndex, MaxMetric, MeanMetric
 from torchmetrics.classification.accuracy import Accuracy
 
-import pandas as pd
-import numpy as np
-import os
-from PIL import Image
-import gc
 from src.data.components.airbus import AirbusDataset
-
-from src.utils.airbus_utils import mask_overlay, masks_as_image
-
-from src.models.unet_module import UNetLitModule
 from src.models.classifier_module import ResNetLitModule
+from src.models.components.lossbinary import LossBinary
 from src.models.components.resnet34 import ResNet34_Binary
 from src.models.components.unet34 import Unet34
-from src.models.components.lossbinary import LossBinary
+from src.models.unet_module import UNetLitModule
+from src.utils.airbus_utils import mask_overlay, masks_as_image
 
 
 class CombinedLitModule(LightningModule):
@@ -127,9 +122,7 @@ class CombinedLitModule(LightningModule):
             cnt1 = (y == 1).sum().item()  # count number of class 1 in image
             cnt0 = y.numel() - cnt1
             if cnt1 != 0:
-                BCE_pos_weight = torch.FloatTensor([1.0 * cnt0 / cnt1]).to(
-                    device=self.device
-                )
+                BCE_pos_weight = torch.FloatTensor([1.0 * cnt0 / cnt1]).to(device=self.device)
             else:
                 BCE_pos_weight = torch.FloatTensor([1.0]).to(device=self.device)
 
@@ -332,10 +325,7 @@ class CombinedLitModule(LightningModule):
         """
         cls_optimizer = self.hparams.cls_optimizer(params=self.cls.parameters())
         smt_optimizer = self.hparams.smt_optimizer(params=self.smt.parameters())
-        if (
-            self.hparams.cls_scheduler is not None
-            and self.hparams.smt_scheduler is not None
-        ):
+        if self.hparams.cls_scheduler is not None and self.hparams.smt_scheduler is not None:
             cls_scheduler = self.hparams.cls_scheduler(optimizer=cls_optimizer)
             smt_scheduler = self.hparams.smt_scheduler(optimizer=smt_optimizer)
             return (
@@ -359,9 +349,9 @@ class CombinedLitModule(LightningModule):
 
 
 if __name__ == "__main__":
+    import hydra
     import pyrootutils
     from omegaconf import DictConfig, OmegaConf
-    import hydra
 
     # find paths
     pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
