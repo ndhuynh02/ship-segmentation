@@ -8,22 +8,21 @@ import os
 os.environ["KAGGLE_USERNAME"] = data["username"]
 os.environ["KAGGLE_KEY"] = data["key"]
 
-from kaggle.api.kaggle_api_extended import KaggleApi
-from torch.utils.data import Dataset
-import zipfile
-import shutil
 import glob
-
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
+import shutil
+import zipfile
 
 import cv2
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from kaggle.api.kaggle_api_extended import KaggleApi
 from PIL import Image, ImageFile
+from sklearn.model_selection import train_test_split
+from torch.utils.data import Dataset
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
-from src.utils.airbus_utils import masks_as_image, imshow
+from src.utils.airbus_utils import imshow, masks_as_image
 
 
 class AirbusDataset(Dataset):
@@ -38,20 +37,14 @@ class AirbusDataset(Dataset):
         self.data_dir = data_dir
         self.prepare_data()
 
-        masks = pd.read_csv(
-            os.path.join(self.data_dir, "train_ship_segmentations_v2.csv")
-        )
+        masks = pd.read_csv(os.path.join(self.data_dir, "train_ship_segmentations_v2.csv"))
 
         # undersample non-ship images
         if undersample == -1:
-            self.dataframe = masks.dropna(
-                subset=["EncodedPixels"]
-            )  # Drop all non-ship images
+            self.dataframe = masks.dropna(subset=["EncodedPixels"])  # Drop all non-ship images
         elif undersample > 0:
             self.dataframe = masks.drop(
-                masks[masks.EncodedPixels.isnull()]
-                .sample(undersample, random_state=42)
-                .index
+                masks[masks.EncodedPixels.isnull()].sample(undersample, random_state=42).index
             )
         else:
             self.dataframe = masks
@@ -71,9 +64,9 @@ class AirbusDataset(Dataset):
                 random_state=42,
             )
             image_ids = image_ids_subset["ImageId"]
-            self.dataframe = self.dataframe[
-                self.dataframe["ImageId"].isin(image_ids)
-            ].reset_index(drop=True)
+            self.dataframe = self.dataframe[self.dataframe["ImageId"].isin(image_ids)].reset_index(
+                drop=True
+            )
 
         self.filenames = [
             os.path.join(self.data_dir, "train_v2", image_id) for image_id in image_ids

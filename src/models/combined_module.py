@@ -1,34 +1,29 @@
+import gc
+import os
 from typing import Any, List
 
+import numpy as np
+import pandas as pd
 import torch
+from PIL import Image
 from pytorch_lightning import LightningModule
-from torchmetrics import MaxMetric, MeanMetric
-
-from src.models.components.lossbinary import LossBinary
-from torchmetrics import JaccardIndex
+from torchmetrics import JaccardIndex, MaxMetric, MeanMetric
 from torchmetrics.classification.accuracy import Accuracy
 
-import pandas as pd
-import numpy as np
-import os
-from PIL import Image
-import gc
 from src.data.components.airbus import AirbusDataset
-
-from src.utils.airbus_utils import mask_overlay, masks_as_image
-
-from src.models.unet_module import UNetLitModule
 from src.models.classifier_module import ResNetLitModule
+from src.models.components.lossbinary import LossBinary
 from src.models.components.resnet34 import ResNet34_Binary
 from src.models.components.unet34 import Unet34
-from src.models.components.lossbinary import LossBinary
+from src.models.unet_module import UNetLitModule
+from src.utils.airbus_utils import mask_overlay, masks_as_image
 
 
 class CombinedLitModule(LightningModule):
     def __init__(
         self,
-        cls: torch.nn.Module,
-        smt: torch.nn.Module,
+        # cls: torch.nn.Module,
+        # smt: torch.nn.Module,
         cls_optimizer: torch.optim.Optimizer,
         smt_optimizer: torch.optim.Optimizer,
         cls_scheduler: torch.optim.lr_scheduler,
@@ -43,6 +38,9 @@ class CombinedLitModule(LightningModule):
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False, ignore=["cls", "smt"])
+
+        # Activate manual optimization
+        self.automatic_optimization = False
 
         # Load checkpoint for classifier and segmenter, and initialize them
         self.cls_ckpt_path = cls_ckpt_path
@@ -89,10 +87,18 @@ class CombinedLitModule(LightningModule):
     def forward(self, x: torch.Tensor):
         logits = self.cls(x)
         y1 = torch.sigmoid(logits)
-        if y1 < 0.5:
-            pred = torch.zeros_like(x[:, :1])
-        else:
-            pred = self.smt(x)
+        y1 = y1.squeeze(0).detach()
+
+        # Thresholding for batch processing
+        threshold = 0.5
+        mask_condition = y1 < threshold
+        if mask_condition.numel() == 1:
+            mask_condition = mask_condition.unsqueeze(0)
+
+        # Generate zero masks for elements where y1 < threshold
+        pred_zero_mask = torch.full(x[:, :1].shape, -1).to(y1.device)
+        pred = torch.where(mask_condition[:, None, None], pred_zero_mask, self.smt(x))
+
         return logits, pred
 
     def on_train_start(self):
@@ -119,9 +125,7 @@ class CombinedLitModule(LightningModule):
             cnt1 = (y == 1).sum().item()  # count number of class 1 in image
             cnt0 = y.numel() - cnt1
             if cnt1 != 0:
-                BCE_pos_weight = torch.FloatTensor([1.0 * cnt0 / cnt1]).to(
-                    device=self.device
-                )
+                BCE_pos_weight = torch.FloatTensor([1.0 * cnt0 / cnt1]).to(device=self.device)
             else:
                 BCE_pos_weight = torch.FloatTensor([1.0]).to(device=self.device)
 
@@ -141,8 +145,16 @@ class CombinedLitModule(LightningModule):
             target_masks,
         ) = self.model_step(batch)
 
-        # update and log metrics
+        cls_optimizer, smt_optimizer = self.optimizers()
+
         # Cls part
+
+        # Optimize Cls
+        cls_optimizer.zero_grad()
+        self.manual_backward(cls_loss)
+        cls_optimizer.step()
+
+        # update and log metrics
         self.cls_train_loss(cls_loss)
         self.cls_train_acc(class_preds, target_labels)
         self.log(
@@ -161,6 +173,13 @@ class CombinedLitModule(LightningModule):
         )
 
         # Smt part
+
+        # Optimize Smt
+        smt_optimizer.zero_grad()
+        self.manual_backward(smt_loss)
+        smt_optimizer.step()
+
+        # update and log metrics
         self.smt_train_loss(smt_loss)
         self.smt_train_metric(mask_preds, target_masks)
         self.log(
@@ -177,11 +196,6 @@ class CombinedLitModule(LightningModule):
             on_epoch=True,
             prog_bar=True,
         )
-
-        # Total loss
-        total_loss = cls_loss + smt_loss
-
-        return {"loss": total_loss}
 
     def validation_step(self, batch: Any, batch_idx: int):
         (
@@ -230,11 +244,9 @@ class CombinedLitModule(LightningModule):
             prog_bar=True,
         )
 
-        # Total loss
-        total_loss = cls_loss + smt_loss
-
         return {
-            "loss": total_loss,
+            "cls_loss": cls_loss,
+            "smt_loss": smt_loss,
             "class_preds": class_preds,
             "mask_preds": mask_preds,
             "target_labels": target_labels,
@@ -304,11 +316,9 @@ class CombinedLitModule(LightningModule):
             prog_bar=True,
         )
 
-        # Total loss
-        total_loss = cls_loss + smt_loss
-
         return {
-            "loss": total_loss,
+            "cls_loss": cls_loss,
+            "smt_loss": smt_loss,
             "class_preds": class_preds,
             "mask_preds": mask_preds,
             "target_labels": target_labels,
@@ -322,14 +332,11 @@ class CombinedLitModule(LightningModule):
         Examples:
             https://pytorch-lightning.readthedocs.io/en/latest/common/lightning_module.html#configure-optimizers
         """
-        cls_optimizer = self.hparams.optimizer(params=self.cls.parameters())
-        smt_optimizer = self.hparams.optimizer(params=self.smt.parameters())
-        if (
-            self.hparams.cls_scheduler is not None
-            and self.hparams.smt_scheduler is not None
-        ):
-            cls_scheduler = self.hparams.scheduler(optimizer=cls_optimizer)
-            smt_scheduler = self.hparams.scheduler(optimizer=smt_optimizer)
+        cls_optimizer = self.hparams.cls_optimizer(params=self.cls.parameters())
+        smt_optimizer = self.hparams.smt_optimizer(params=self.smt.parameters())
+        if self.hparams.cls_scheduler is not None and self.hparams.smt_scheduler is not None:
+            cls_scheduler = self.hparams.cls_scheduler(optimizer=cls_optimizer)
+            smt_scheduler = self.hparams.smt_scheduler(optimizer=smt_optimizer)
             return (
                 {
                     "optimizer": cls_optimizer,
@@ -354,9 +361,9 @@ class CombinedLitModule(LightningModule):
 
 
 if __name__ == "__main__":
+    import hydra
     import pyrootutils
     from omegaconf import DictConfig, OmegaConf
-    import hydra
 
     # find paths
     pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)

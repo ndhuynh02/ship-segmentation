@@ -1,7 +1,7 @@
 _target_: src.models.combined_module.CombinedLitModule
-defaults:
-  - cls_ckpt_path: ./ckpt/Classifier-768.ckpt
-  - smt_ckpt_path: ./ckpt/unet34-pos-weight.ckpt
+
+cls_ckpt_path: ${paths.ckpt_dir}/Classifier-768.ckpt
+smt_ckpt_path: ${paths.ckpt_dir}/unet34-pos-weight.ckpt
 
 cls_optimizer:
   _target_: torch.optim.Adam
