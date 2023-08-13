@@ -1,7 +1,6 @@
 from typing import Optional, Tuple
 
 import albumentations as A
-import hydra
 import torch
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import LightningDataModule
@@ -95,8 +94,6 @@ class AirbusDataModule(LightningDataModule):
                     / (
                         self.hparams.train_val_test_split[1] + self.hparams.train_val_test_split[2]
                     ),
-                    stratify=valid_and_test_ids["counts"],
-                    shuffle=True,
                     random_state=42,
                 )
                 assert len(train_ids) + len(val_ids) + len(test_ids) == len(unique_img_ids)
@@ -110,7 +107,7 @@ class AirbusDataModule(LightningDataModule):
                 self.data_test = Subset(dataset, test_ids.index.to_list())
 
                 print("Using stratified train_test_split.")
-            except:
+            except ValueError:
                 data_len = len(dataset)
                 train_len = int(data_len * self.hparams.train_val_test_split[0])
                 val_len = int(data_len * self.hparams.train_val_test_split[1])
@@ -200,7 +197,7 @@ class AirbusDataModule(LightningDataModule):
 if __name__ == "__main__":
     import hydra
     import pyrootutils
-    from omegaconf import DictConfig
+    from omegaconf import DictConfig, OmegaConf
 
     path = pyrootutils.find_root(search_from=__file__, indicator=".project-root")
     config_path = str(path / "configs")

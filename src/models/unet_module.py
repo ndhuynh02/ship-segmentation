@@ -1,5 +1,4 @@
 import gc
-import os
 from typing import Any, List
 
 import numpy as np
@@ -9,9 +8,8 @@ from PIL import Image
 from pytorch_lightning import LightningModule
 from torchmetrics import JaccardIndex, MaxMetric, MeanMetric
 
-from src.data.components.airbus import AirbusDataset
 from src.models.components.lossbinary import LossBinary
-from src.utils.airbus_utils import mask_overlay, masks_as_image
+from src.models.components.lovasz_loss import BCE_Lovasz
 
 
 class UNetLitModule(LightningModule):
@@ -73,7 +71,7 @@ class UNetLitModule(LightningModule):
     def model_step(self, batch: Any):
         x, y, id = batch[0], batch[1], batch[3]
 
-        if isinstance(self.criterion, LossBinary):
+        if isinstance(self.criterion, (LossBinary, BCE_Lovasz)):
             cnt1 = (y == 1).sum().item()  # count number of class 1 in image
             cnt0 = y.numel() - cnt1
             if cnt1 != 0:
@@ -116,13 +114,7 @@ class UNetLitModule(LightningModule):
         self.val_metric(preds, targets)
 
         self.log("val/loss", self.val_loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log(
-            "val/jaccard",
-            self.val_metric,
-            on_step=False,
-            on_epoch=True,
-            prog_bar=True,
-        )
+        self.log("val/jaccard", self.val_metric, on_step=False, on_epoch=True, prog_bar=True)
 
         return {"loss": loss, "preds": preds, "targets": targets}
 

@@ -6,7 +6,7 @@ import torch
 
 def rle_decode(mask_rle, shape=(768, 768)):
     """
-    mask_rle: run-length as string formated (start length)
+    mask_rle: run-length as string formatted (start length)
     shape: (height,width) of array to return
     Returns numpy array, 1 - mask, 0 - background
     """
@@ -49,7 +49,6 @@ def imshow(img, mask, title=None):
 
 
 def imshow_batch(images, masks, grid_shape=(8, 8)):
-    assert len(images) == len(masks) == (grid_shape[0] * grid_shape[1])
 
     IMG_MEAN = [0.485, 0.456, 0.406]
     IMG_STD = [0.229, 0.224, 0.225]
@@ -72,6 +71,4 @@ def imshow_batch(images, masks, grid_shape=(8, 8)):
 
         ax = fig.add_subplot(grid_shape[0], grid_shape[1], i + 1, xticks=[], yticks=[])
         ax.imshow(mask_overlay(img, mask))
-        if title is not None:
-            ax.set_title(title)
     plt.show()
