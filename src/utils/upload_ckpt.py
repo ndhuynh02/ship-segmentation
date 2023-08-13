@@ -7,7 +7,7 @@ api = wandb.Api()
 run_id = "rqfgjw1r"
 run = api.run(f"ship_segmentation/ship-segmentation/{run_id}")
 
-# Location of file you want to upload 
+# Location of file you want to upload
 ckpt_path = "/workspace/logs/train/runs/2023-07-15_13-11-08/checkpoints/epoch_049.ckpt"
 
 # Upload
