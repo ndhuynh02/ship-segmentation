@@ -1,6 +1,5 @@
 import torch
-from torch.nn import Module
-from torchvision.models import resnet34, ResNet34_Weights
+from torchvision.models import ResNet34_Weights, resnet34
 
 ResNet34 = resnet34(weights=ResNet34_Weights.DEFAULT)
 

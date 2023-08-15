@@ -19,7 +19,7 @@ from torchvision.utils import make_grid
 from src.utils.airbus_utils import mask_overlay, masks_as_image
 
 
-class WandbCallback(Callback):
+class WandbCombinedCallback(Callback):
     def __init__(
         self,
         image_id: str = "003b48a9e.jpg",
@@ -73,8 +73,8 @@ class WandbCallback(Callback):
         image = transformed["image"]  # (3, img_size, img_size)
         image = image.unsqueeze(0).to(trainer.model.device)  # (1, 3, img_size, img_size)
 
-        pred_mask = trainer.model(image)
-        pred_mask = pred_mask.detach()  # (1, 1, img_size, img_size)
+        pred_mask = trainer.model(image)[1]  # (1, 1, img_size, img_size)
+        pred_mask = pred_mask.detach()
         pred_mask = torch.sigmoid(pred_mask)
         pred_mask = pred_mask >= 0.5
         pred_mask = pred_mask.squeeze(0)
@@ -101,8 +101,8 @@ class WandbCallback(Callback):
         batch_idx: int,
         dataloader_idx: int = 0,
     ) -> None:
-        preds = outputs["preds"]
-        targets = outputs["targets"]
+        preds = outputs["mask_preds"]
+        targets = outputs["target_masks"]
         self.batch_size = preds.shape[0]
         self.num_batch = self.num_samples / self.batch_size
 
@@ -207,8 +207,8 @@ class WandbCallback(Callback):
             # B, 3, H, W
             return torch.clamp(ten, 0, 1).permute(3, 0, 1, 2)
 
-        preds = outputs["preds"]
-        targets = outputs["targets"]
+        preds = outputs["mask_preds"]
+        targets = outputs["target_masks"]
         images, ys, labels, ids = batch
 
         images = denormalize(images)

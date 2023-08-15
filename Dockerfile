@@ -9,7 +9,7 @@ COPY requirements_for_docker.txt .
 RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y git && \
-    pip install --upgrade pip 
+    pip install --upgrade pip
 
 RUN pip install --no-cache-dir -r requirements_for_docker.txt
 

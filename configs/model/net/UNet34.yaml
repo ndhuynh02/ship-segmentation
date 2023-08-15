@@ -1,2 +1,3 @@
 _target_: src.models.components.unet34.Unet34
-ckpt_path: None
+ckpt_path: null
+arch: null
