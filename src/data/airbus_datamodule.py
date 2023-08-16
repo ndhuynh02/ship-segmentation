@@ -2,7 +2,6 @@ from typing import Optional, Tuple
 
 import albumentations as A
 import torch
-from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import LightningDataModule
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, Dataset, Subset, random_split
