@@ -1,6 +1,13 @@
 import torch
 import torch.nn.functional as F
-from torchvision.models import ResNet34_Weights, ResNet50_Weights, resnet34, resnet50
+from torchvision.models import (
+    ResNet34_Weights,
+    ResNet50_Weights,
+    ResNet101_Weights,
+    resnet34,
+    resnet50,
+    resnet101,
+)
 
 from src.models.classifier_module import ResNetLitModule
 from src.models.components.resnet34 import ResNet34_Binary
@@ -49,16 +56,21 @@ class Unet34(torch.nn.Module):
             print("Using pretrained classifier")
         else:
             self.arch = arch
-            if arch == "resnet34":
+            if self.arch == "resnet34":
                 rn34 = resnet34(weights=ResNet34_Weights.DEFAULT)
                 rn34_feature_extractor = torch.nn.Sequential(*list(rn34.children())[:-2])
                 self.rn = rn34_feature_extractor
                 print("Using torchvision.models ResNet34")
-            elif arch == "resnet50":
+            elif self.arch == "resnet50":
                 rn50 = resnet50(weights=ResNet50_Weights.DEFAULT)
                 rn50_feature_extractor = torch.nn.Sequential(*list(rn50.children())[:-2])
                 self.rn = rn50_feature_extractor
                 print("Using torchvision.models ResNet50")
+            elif self.arch == "resnet101":
+                rn101 = resnet101(weights=ResNet101_Weights.DEFAULT)
+                rn101_feature_extractor = torch.nn.Sequential(*list(rn101.children())[:-2])
+                self.rn = rn101_feature_extractor
+                print("Using torchvision.models ResNet101")
             else:
                 rn34 = resnet34(weights=ResNet34_Weights.DEFAULT)
                 rn34_feature_extractor = torch.nn.Sequential(*list(rn34.children())[:-2])
