@@ -1,5 +1,5 @@
 import os
-from typing import Any, Optional
+from typing import Any
 
 import albumentations as A
 import cv2
@@ -7,13 +7,10 @@ import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
 import torch
-import torchvision.transforms as transforms
-import wandb
 from albumentations import Compose
 from albumentations.pytorch.transforms import ToTensorV2
 from PIL import Image
 from pytorch_lightning.callbacks import Callback
-from pytorch_lightning.utilities.types import STEP_OUTPUT
 from torchvision.utils import make_grid
 
 from src.utils.airbus_utils import mask_overlay, masks_as_image
