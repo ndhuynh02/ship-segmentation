@@ -1,0 +1,8 @@
+defaults:
+  - default.yaml
+
+model_checkpoint:
+  monitor: "val/acc"
+
+early_stopping:
+  monitor: "val/acc"
