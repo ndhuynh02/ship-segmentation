@@ -1,35 +1,25 @@
-import gc
-import os
 from typing import Any, List
 
-import numpy as np
-import pandas as pd
 import torch
-from PIL import Image
 from pytorch_lightning import LightningModule
 from torchmetrics import JaccardIndex, MaxMetric, MeanMetric
 from torchmetrics.classification.accuracy import Accuracy
 
-from src.data.components.airbus import AirbusDataset
 from src.models.classifier_module import ResNetLitModule
 from src.models.components.lossbinary import LossBinary
+from src.models.components.lovasz_loss import LovaszLoss
 from src.models.components.resnet34 import ResNet34_Binary
 from src.models.components.unet34 import Unet34
 from src.models.unet_module import UNetLitModule
-from src.utils.airbus_utils import mask_overlay, masks_as_image
 
 
 class CombinedLitModule(LightningModule):
     def __init__(
         self,
-        # cls: torch.nn.Module,
-        # smt: torch.nn.Module,
         cls_optimizer: torch.optim.Optimizer,
         smt_optimizer: torch.optim.Optimizer,
         cls_scheduler: torch.optim.lr_scheduler,
         smt_scheduler: torch.optim.lr_scheduler,
-        # cls_criterion: torch.nn.Module,
-        # smt_criterion: torch.nn.Module,
         cls_ckpt_path: None,
         smt_ckpt_path: None,
     ):
@@ -52,12 +42,12 @@ class CombinedLitModule(LightningModule):
             self.smt = UNetLitModule.load_from_checkpoint(
                 checkpoint_path=self.smt_ckpt_path,
                 net=Unet34(),
-                criterion=LossBinary(),
+                criterion=LovaszLoss(),
             )
 
         # Loss functions
         self.cls_criterion = torch.nn.BCEWithLogitsLoss()
-        self.smt_criterion = LossBinary()
+        self.smt_criterion = LovaszLoss()
 
         # metric objects for calculating and averaging accuracy across batches
         self.cls_train_acc = Accuracy(task="binary")

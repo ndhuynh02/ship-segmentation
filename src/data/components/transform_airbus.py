@@ -1,9 +1,6 @@
 from typing import Any, Optional
 
 import albumentations as A
-import matplotlib.pyplot as plt
-import numpy as np
-import torch
 from albumentations import Compose
 from albumentations.pytorch.transforms import ToTensorV2
 from torch.utils.data import Dataset

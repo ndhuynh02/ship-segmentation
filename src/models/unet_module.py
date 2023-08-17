@@ -1,10 +1,7 @@
 import gc
 from typing import Any, List
 
-import numpy as np
-import pandas as pd
 import torch
-from PIL import Image
 from pytorch_lightning import LightningModule
 from torchmetrics import JaccardIndex, MaxMetric, MeanMetric
 
