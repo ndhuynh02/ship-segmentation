@@ -7,7 +7,6 @@ from torchmetrics.classification.accuracy import Accuracy
 
 from src.models.classifier_module import ResNetLitModule
 from src.models.components.lossbinary import LossBinary
-from src.models.components.lovasz_loss import LovaszLoss
 from src.models.components.resnet34 import ResNet34_Binary
 from src.models.components.unet34 import Unet34
 from src.models.unet_module import UNetLitModule
