@@ -20,6 +20,7 @@ class CombinedLitModule(LightningModule):
         smt_optimizer: torch.optim.Optimizer,
         cls_scheduler: torch.optim.lr_scheduler,
         smt_scheduler: torch.optim.lr_scheduler,
+        criterion: torch.nn.Module,
         cls_ckpt_path: None,
         smt_ckpt_path: None,
     ):
@@ -27,7 +28,11 @@ class CombinedLitModule(LightningModule):
 
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
-        self.save_hyperparameters(logger=False, ignore=["cls", "smt"])
+        self.save_hyperparameters(logger=False, ignore=["criterion"])
+
+        # Loss functions
+        self.cls_criterion = torch.nn.BCEWithLogitsLoss()
+        self.smt_criterion = criterion
 
         # Load checkpoint for classifier and segmenter, and initialize them
         self.cls_ckpt_path = cls_ckpt_path
@@ -42,12 +47,8 @@ class CombinedLitModule(LightningModule):
             self.smt = UNetLitModule.load_from_checkpoint(
                 checkpoint_path=self.smt_ckpt_path,
                 net=Unet34(),
-                criterion=LovaszLoss(),
+                criterion=self.smt_criterion,
             )
-
-        # Loss functions
-        self.cls_criterion = torch.nn.BCEWithLogitsLoss()
-        self.smt_criterion = LovaszLoss()
 
         # metric objects for calculating and averaging accuracy across batches
         self.cls_train_acc = Accuracy(task="binary")
