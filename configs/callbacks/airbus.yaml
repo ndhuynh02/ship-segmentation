@@ -3,7 +3,7 @@ defaults:
   - model_summary.yaml
   - early_stopping.yaml
   - rich_progress_bar.yaml
-  - wandb_callback.yaml
+  - CaM_wandb_callback.yaml
   - _self_
 
 model_checkpoint:

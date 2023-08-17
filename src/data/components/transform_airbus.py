@@ -46,3 +46,10 @@ class TransformAirbus(Dataset):
             mask = mask.unsqueeze(0).float()  # (1, img_size, img_size)
 
         return image, mask, label, file_id
+
+if __name__ == "__main__":
+    airbus = TransformAirbus(AirbusDataset())
+    image, mask, _, _ = airbus[2]
+    print(image.shape)
+    print(mask.shape)
+
