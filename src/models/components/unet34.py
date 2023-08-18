@@ -1,6 +1,9 @@
+import pyrootutils
 import torch
 import torch.nn.functional as F
 from torchvision.models import ResNet34_Weights, resnet34
+
+pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
 from src.models.classifier_module import ResNetLitModule
 from src.models.components.resnet34 import ResNet34_Binary
@@ -21,17 +24,20 @@ class UNet_Up_Block(torch.nn.Module):
         return self.bn(F.relu(cat_p))
 
 
-class SaveFeatures:
-    features = None
+class Resnet34(torch.nn.Module):
+    def __init__(self, sequence: torch.nn.Sequential) -> None:
+        super().__init__()
+        self.net = sequence
 
-    def __init__(self, m):
-        self.hook = m.register_forward_hook(self.hook_fn)
+    def forward(self, x):
+        output = []
+        for i, layer in enumerate(self.net):
+            x = layer(x)
+            if i in [2, 4, 5, 6]:
+                output.append(x)
+        output.append(x)
 
-    def hook_fn(self, module, input, output):
-        self.features = output
-
-    def remove(self):
-        self.hook.remove()
+        return output
 
 
 class Unet34(torch.nn.Module):
@@ -52,7 +58,8 @@ class Unet34(torch.nn.Module):
             rn34_feature_extractor = torch.nn.Sequential(*list(rn34.children())[:-2])
             self.rn = rn34_feature_extractor
             print("Using torchvision.models ResNet34")
-        self.sfs = [SaveFeatures(self.rn[i]) for i in [2, 4, 5, 6]]
+
+        self.sfs = Resnet34(self.rn)
         self.up1 = UNet_Up_Block(512, 256, 256)
         self.up2 = UNet_Up_Block(256, 128, 256)
         self.up3 = UNet_Up_Block(256, 64, 256)
@@ -60,22 +67,29 @@ class Unet34(torch.nn.Module):
         self.up5 = torch.nn.ConvTranspose2d(256, 1, 2, stride=2)
 
     def forward(self, x):
-        x = F.relu(self.rn(x))
-        x = self.up1(x, self.sfs[3].features)
-        x = self.up2(x, self.sfs[2].features)
-        x = self.up3(x, self.sfs[1].features)
-        x = self.up4(x, self.sfs[0].features)
+        # rn_features
+        # x = F.relu(self.rn(x))
+        # x = self.up1(x, self.sfs[3].features)
+        # x = self.up2(x, self.sfs[2].features)
+        # x = self.up3(x, self.sfs[1].features)
+        # x = self.up4(x, self.sfs[0].features)
+        # x = self.up5(x)
+        # return x
+
+        encoder_output = self.sfs(x)
+        x = F.relu(encoder_output[-1])
+        x = self.up1(x, encoder_output[3])
+        x = self.up2(x, encoder_output[2])
+        x = self.up3(x, encoder_output[1])
+        x = self.up4(x, encoder_output[0])
         x = self.up5(x)
         return x
-
-    def close(self):
-        for sf in self.sfs:
-            sf.remove()
 
 
 if __name__ == "__main__":
     x = torch.rand((1, 3, 256, 256))
     model = Unet34()
+    model = torch.jit.script(model)
     print(model(x).shape)
     print(model(x).min())  # 'torch.Size([1, 1, 256, 256])
     print(model(x).max())
