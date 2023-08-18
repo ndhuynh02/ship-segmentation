@@ -103,6 +103,11 @@ class AirbusDataModule(LightningDataModule):
                     shuffle=True,
                     random_state=42,
                 )
+                
+                mid = train_ids
+                train_ids = test_ids
+                test_ids = mid
+                
                 assert len(train_ids) + len(val_ids) + len(test_ids) == len(
                     unique_img_ids
                 )
