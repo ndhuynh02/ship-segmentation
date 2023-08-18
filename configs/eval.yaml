@@ -10,10 +10,11 @@ defaults:
   - paths: default.yaml
   - extras: default.yaml
   - hydra: default.yaml
+  - experiment: null
 
 task_name: "eval"
 
 tags: ["dev"]
 
 # passing checkpoint path is necessary for evaluation
-ckpt_path: ???
+ckpt_path: null
