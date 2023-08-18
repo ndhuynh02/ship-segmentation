@@ -1,6 +1,6 @@
-version: '3.8'
+version: "3.8"
 services:
-  bentoml_api: 
+  bentoml_api:
     image: airbus-segmentation:tzu75kbwrgbtnq6e
     container_name: airbus-api
     environment:

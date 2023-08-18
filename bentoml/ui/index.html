@@ -38,7 +38,7 @@
 
     #anotateMask {
       display: block;
-      z-index: 1; 
+      z-index: 1;
       opacity: 0.5;
     }
 
@@ -139,10 +139,10 @@
       try {
         const loadingWheel = document.getElementById('loadingWheel');
         loadingWheel.style.display = 'block'; // Show the loading wheel
-        
+
         const formData = new FormData();
         formData.append('image', imageFile);
-        
+
         const response = await fetch(apiEndpoint, {
           method: 'POST',
           body: formData,
@@ -153,7 +153,7 @@
         if (!response.ok) {
           throw new Error('Network response was not ok');
         }
-        
+
         const blob = await response.blob(); // Convert the binary image to a Blob
         const imageURL = URL.createObjectURL(blob); // Create a URL for the Blob
 
@@ -174,7 +174,7 @@
 
           // Draw the uploaded image onto the canvas
           ctx.drawImage(resultMask, 0, 0);
-          
+
           applyProcessedColor(colorPicker.value);
         }
         inputImage.src = URL.createObjectURL(imageFile)
@@ -196,7 +196,7 @@
     document.getElementById('uploadForm').addEventListener('submit', async (event) => {
       event.preventDefault();
       const fileInput = document.getElementById('fileInput');
-     
+
       const file = fileInput.files[0];
 
       if (file) {
@@ -269,7 +269,7 @@
       }
       if (isErasing) {
         ctx.globalCompositeOperation="destination-out";
-        
+
         ctx.arc(pos.x, pos.y, 8, 0, Math.PI * 2, false);
         setPosition(e);
         ctx.arc(pos.x, pos.y, 8, 0, Math.PI * 2, false);

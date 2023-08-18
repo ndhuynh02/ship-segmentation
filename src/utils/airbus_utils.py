@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
+
 def rle_decode(mask_rle, shape=(768, 768)):
     """
     mask_rle: run-length as string formatted (start length)
@@ -40,7 +41,7 @@ def mask_overlay(image, mask, color=(0, 1, 0)):
 
 
 def imshow(img, mask, title=None):
-    plt.figure(figsize = (6,6))
+    plt.figure(figsize=(6, 6))
     plt.imshow(mask_overlay(img, mask))
     if title is not None:
         plt.title(title)
