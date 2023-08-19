@@ -4,7 +4,7 @@ from torch.nn import Module
 
 class UNet_down_block(Module):
     def __init__(self, input_channel, output_channel, down_size):
-        super(UNet_down_block, self).__init__()
+        super().__init__()
         self.conv1 = torch.nn.Conv2d(input_channel, output_channel, 3, padding=1)
         self.bn1 = torch.nn.BatchNorm2d(output_channel)
         self.conv2 = torch.nn.Conv2d(output_channel, output_channel, 3, padding=1)
@@ -22,12 +22,12 @@ class UNet_down_block(Module):
         x = self.relu(self.bn2(self.conv2(x)))
         x = self.relu(self.bn3(self.conv3(x)))
         return x
-    
+
 
 class UNet_up_block(Module):
     def __init__(self, prev_channel, input_channel, output_channel):
-        super(UNet_up_block, self).__init__()
-        self.up_sampling = torch.nn.Upsample(scale_factor=2, mode='bilinear')
+        super().__init__()
+        self.up_sampling = torch.nn.Upsample(scale_factor=2, mode="bilinear")
         self.conv1 = torch.nn.Conv2d(prev_channel + input_channel, output_channel, 3, padding=1)
         self.bn1 = torch.nn.BatchNorm2d(output_channel)
         self.conv2 = torch.nn.Conv2d(output_channel, output_channel, 3, padding=1)
@@ -47,7 +47,7 @@ class UNet_up_block(Module):
 
 class UNet(torch.nn.Module):
     def __init__(self):
-        super(UNet, self).__init__()
+        super().__init__()
 
         self.down_block1 = UNet_down_block(3, 16, False)
         self.down_block2 = UNet_down_block(16, 32, True)
@@ -97,7 +97,8 @@ class UNet(torch.nn.Module):
         x = self.last_conv2(x)
         return x
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     x = torch.rand((1, 3, 256, 256))
     model = UNet()
     print(model(x).min())  # 'torch.Size([1, 1, 256, 256])

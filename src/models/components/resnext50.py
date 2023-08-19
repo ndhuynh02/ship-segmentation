@@ -1,6 +1,5 @@
 import torch
-from torch.nn import Module
-from torchvision.models import resnext50_32x4d, ResNeXt50_32X4D_Weights
+from torchvision.models import ResNeXt50_32X4D_Weights, resnext50_32x4d
 
 resnext50 = resnext50_32x4d(weights=ResNeXt50_32X4D_Weights.DEFAULT)
 

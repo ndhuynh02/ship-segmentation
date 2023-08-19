@@ -16,14 +16,21 @@ from torchvision.utils import make_grid
 from src.utils.airbus_utils import mask_overlay, masks_as_image
 
 
-class WandbCallback(Callback):
-    def __init__(self, image_id: str = '003b48a9e.jpg', data_path: str = 'data/airbus', n_images_to_log: int = 5, img_size: int = 384):
+class WandbCombinedCallback(Callback):
+    def __init__(
+        self,
+        image_id: str = "003b48a9e.jpg",
+        data_path: str = "data/airbus",
+        n_images_to_log: int = 5,
+        img_size: int = 384,
+    ):
+        self.img_size = img_size
         self.n_images_to_log = n_images_to_log  # number of logged images when eval
 
-        self.eight_val_preds = []
-        self.eight_val_targets = []
-        self.eight_val_images = []
-
+        self.four_first_preds = []
+        self.four_first_targets = []
+        self.four_first_batch = []
+        self.four_first_image = []
         self.show_pred = []
         self.show_target = []
 
@@ -31,40 +38,40 @@ class WandbCallback(Callback):
         self.num_samples = 8
         self.num_batch = 0
 
-        image_path = os.path.join(data_path, 'train_v2')
+        image_path = os.path.join(data_path, "train_v2")
         image_path = os.path.join(image_path, image_id)
 
         self.sample_image = np.array(Image.open(image_path).convert("RGB"))
-        self.good_dataframe = pd.read_csv(os.path.join('data_csv', 'good_images.csv'))
-        self.bad_dataframe = pd.read_csv(os.path.join('data_csv', 'bad_images.csv'))
         self.sample_image_height, self.sample_image_width = (
             self.sample_image.shape[0],
             self.sample_image.shape[1],
         )
-        dataframe = pd.read_csv(
-            os.path.join(data_path, "train_ship_segmentations_v2.csv")
-        )
+        dataframe = pd.read_csv(os.path.join(data_path, "train_ship_segmentations_v2.csv"))
         self.sample_mask = dataframe[dataframe["ImageId"] == image_id]["EncodedPixels"]
         self.sample_mask = masks_as_image(self.sample_mask)
 
-        self.transform = Compose([
-            A.Resize(self.img_size, self.img_size),
-            A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-            ToTensorV2(),
-        ])
+        self.transform = Compose(
+            [
+                A.Resize(self.img_size, self.img_size),
+                A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                ToTensorV2(),
+            ]
+        )
 
     def on_train_start(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"):
         wandb_logger = trainer.logger
-        wandb_logger.log_image(key='real mask', images=[Image.fromarray(
-            mask_overlay(self.sample_image, self.sample_mask))])
+        wandb_logger.log_image(
+            key="real mask",
+            images=[Image.fromarray(mask_overlay(self.sample_image, self.sample_mask))],
+        )
 
     def on_train_epoch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"):
         transformed = self.transform(image=self.sample_image)
         image = transformed["image"]  # (3, img_size, img_size)
         image = image.unsqueeze(0).to(trainer.model.device)  # (1, 3, img_size, img_size)
 
-        pred_mask = trainer.model(image)
-        pred_mask = pred_mask.detach()  # (1, 1, img_size, img_size)
+        pred_mask = trainer.model(image)[1]  # (1, 1, img_size, img_size)
+        pred_mask = pred_mask.detach()
         pred_mask = torch.sigmoid(pred_mask)
         pred_mask = pred_mask >= 0.5
         pred_mask = pred_mask.squeeze(0)
@@ -91,22 +98,19 @@ class WandbCallback(Callback):
         batch_idx: int,
         dataloader_idx: int = 0,
     ) -> None:
-        preds = outputs["preds"]
-        targets = outputs["targets"]
+        preds = outputs["mask_preds"]
+        targets = outputs["target_masks"]
         self.batch_size = preds.shape[0]
-        self.num_batch = self.num_samples/self.batch_size
-        
-        if len(self.eight_val_images) < self.num_batch:
-            image, ys, ids = batch
-            self.eight_val_images.append(image)
-        
-        n = int (self.num_batch * self.batch_size)
-        self.eight_val_preds.extend(preds[:n])
-        self.eight_val_targets.extend(targets[:n])
+        self.num_batch = self.num_samples / self.batch_size
 
-    def on_validation_epoch_end(
-        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
-    ):
+        if len(self.four_first_batch) < self.num_batch:
+            self.four_first_batch.append(batch)
+
+        n = int(self.num_batch * self.batch_size)
+        self.four_first_preds.extend(preds[:n])
+        self.four_first_targets.extend(targets[:n])
+
+    def on_validation_epoch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"):
         IMG_MEAN = [0.485, 0.456, 0.406]
         IMG_STD = [0.229, 0.224, 0.225]
 
@@ -118,29 +122,42 @@ class WandbCallback(Callback):
             # B, 3, H, W
             return torch.clamp(ten, 0, 1).permute(3, 0, 1, 2)
 
-        image_batch = torch.cat(self.eight_val_images, dim=0)
-        image_batch = denormalize(image_batch)
+        # chinh image ve (768, 768, 3)
+        for i, batch in enumerate(self.four_first_batch):
+            (
+                image_batch,
+                mask,
+                label,
+                file_id,
+            ) = batch
 
-        for j, (image, pred, target) in enumerate(zip(image_batch, self.eight_val_preds, self.eight_val_targets)):
-            image = image.squeeze() # (3, 768, 768)
-            image = image.cpu().numpy()
-            image = (image * 255).astype(np.uint8)
-            image = np.transpose(image, (1, 2, 0))
-                
-            pred = pred.unsqueeze(0)
-            pred = pred.cpu().numpy().astype(np.uint8)
-            log_pred = mask_overlay(image, pred)
-            log_pred = np.transpose(log_pred, (2, 0, 1))
-            log_pred = torch.from_numpy(log_pred)
-            self.show_pred.append(log_pred)
-                                      
-            target = target.unsqueeze(0)
-            target = target.cpu().numpy().astype(np.uint8)
-            log_target = mask_overlay(image, target)
-            log_target = np.transpose(log_target, (2, 0, 1))
-            log_target = torch.from_numpy(log_target)
-            self.show_target.append(log_target)
-       
+            # image.shape = (b, 3, h, w)
+            images = torch.split(image_batch, 1, dim=0)
+
+            for j in range(self.batch_size):
+                image = images[j]
+                image = denormalize(image)
+                image = image.squeeze()  # (3, 768, 768)
+                image = image.cpu().numpy()
+                image = (image * 255).astype(np.uint8)
+                image = np.transpose(image, (1, 2, 0))
+
+                pred = self.four_first_preds[i * self.batch_size + j]
+                pred = pred.unsqueeze(0)
+                pred = pred.cpu().numpy().astype(np.uint8)
+                log_pred = mask_overlay(image, pred)
+                log_pred = np.transpose(log_pred, (2, 0, 1))
+                log_pred = torch.from_numpy(log_pred)
+                self.show_pred.append(log_pred)
+
+                target = self.four_first_targets[i * self.batch_size + j]
+                target = target.unsqueeze(0)
+                target = target.cpu().numpy().astype(np.uint8)
+                log_target = mask_overlay(image, target)
+                log_target = np.transpose(log_target, (2, 0, 1))
+                log_target = torch.from_numpy(log_target)
+                self.show_target.append(log_target)
+
         stack_pred = torch.stack(self.show_pred)
         stack_target = torch.stack(self.show_target)
 
@@ -154,16 +171,25 @@ class WandbCallback(Callback):
         grid_target_np = Image.fromarray(grid_target_np)
 
         wandb_logger = trainer.logger
-        wandb_logger.log_image(key='eval_images', images=[grid_pred_np, grid_target_np])
+        wandb_logger.log_image(key="predicted mask", images=[grid_pred_np, grid_target_np])
 
-        self.eight_val_targets.clear()
-        self.eight_val_images.clear()
-        self.eight_val_preds.clear()
+        self.four_first_preds.clear()
+        self.four_first_targets.clear()
+        self.four_first_batch.clear()
+        self.four_first_image.clear()
         self.show_pred.clear()
         self.show_target.clear()
-        
-    def on_test_batch_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule, outputs, batch: Any, batch_idx: int, dataloader_idx: int) -> None:
-        if (self.n_images_to_log <= 0):
+
+    def on_test_batch_end(
+        self,
+        trainer: pl.Trainer,
+        pl_module: pl.LightningModule,
+        outputs,
+        batch: Any,
+        batch_idx: int,
+        dataloader_idx: int,
+    ) -> None:
+        if self.n_images_to_log <= 0:
             return
 
         IMG_MEAN = [0.485, 0.456, 0.406]
@@ -178,18 +204,18 @@ class WandbCallback(Callback):
             # B, 3, H, W
             return torch.clamp(ten, 0, 1).permute(3, 0, 1, 2)
 
-        preds = outputs["preds"]
-        targets = outputs["targets"]
-        images, ys, ids = batch
+        preds = outputs["mask_preds"]
+        targets = outputs["target_masks"]
+        images, ys, labels, ids = batch
 
         images = denormalize(images)
         for img, pred, target, id in zip(images, preds, targets, ids):
-            if (self.n_images_to_log <= 0):
+            if self.n_images_to_log <= 0:
                 break
 
-            img = (img.permute(1, 2, 0).cpu().numpy()*255).astype(np.uint8)
+            img = (img.permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
             pred = torch.sigmoid(pred)
-            pred = (pred >= 0.5)
+            pred = pred >= 0.5
             pred = pred.cpu().numpy().astype(np.uint8)
             target = target.cpu().numpy().astype(np.uint8)
 
@@ -200,7 +226,10 @@ class WandbCallback(Callback):
             log_pred = Image.fromarray(log_pred)
             log_target = Image.fromarray(log_target)
 
-            logger.log_image(key="Sample", images=[log_img, log_pred, log_target], caption=[
-                             id+"-Real", id+"-Predict", id+"-GroundTruth"])
+            logger.log_image(
+                key="Sample",
+                images=[log_img, log_pred, log_target],
+                caption=[id + "-Real", id + "-Predict", id + "-GroundTruth"],
+            )
 
             self.n_images_to_log -= 1

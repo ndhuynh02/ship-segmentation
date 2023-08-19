@@ -8,22 +8,18 @@ import os
 os.environ["KAGGLE_USERNAME"] = data["username"]
 os.environ["KAGGLE_KEY"] = data["key"]
 
-from kaggle.api.kaggle_api_extended import KaggleApi
-from torch.utils.data import Dataset
-import zipfile
 import shutil
-import glob
+import zipfile
 
-import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
-
-import cv2
+import pandas as pd
+from kaggle.api.kaggle_api_extended import KaggleApi
 from PIL import Image, ImageFile
+from sklearn.model_selection import train_test_split
+from torch.utils.data import Dataset
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
-from src.utils.airbus_utils import masks_as_image, imshow
+from src.utils.airbus_utils import imshow, masks_as_image
 
 
 class AirbusDataset(Dataset):
@@ -42,14 +38,10 @@ class AirbusDataset(Dataset):
 
         # undersample non-ship images
         if undersample == -1:
-            self.dataframe = masks.dropna(
-                subset=["EncodedPixels"]
-            )  # Drop all non-ship images
+            self.dataframe = masks.dropna(subset=["EncodedPixels"])  # Drop all non-ship images
         elif undersample > 0:
             self.dataframe = masks.drop(
-                masks[masks.EncodedPixels.isnull()]
-                .sample(undersample, random_state=42)
-                .index
+                masks[masks.EncodedPixels.isnull()].sample(undersample, random_state=42).index
             )
         else:
             self.dataframe = masks
@@ -69,9 +61,9 @@ class AirbusDataset(Dataset):
                 random_state=42,
             )
             image_ids = image_ids_subset["ImageId"]
-            self.dataframe = self.dataframe[
-                self.dataframe["ImageId"].isin(image_ids)
-            ].reset_index(drop=True)
+            self.dataframe = self.dataframe[self.dataframe["ImageId"].isin(image_ids)].reset_index(
+                drop=True
+            )
 
         self.filenames = [
             os.path.join(self.data_dir, "train_v2", image_id) for image_id in image_ids
@@ -119,7 +111,7 @@ class AirbusDataset(Dataset):
         with zipfile.ZipFile(downloaded_file, "r") as zip_ref:
             zip_ref.extractall(self.data_dir)
 
-        print("Removing unneccessary files and folders")
+        print("Removing unnecessary files and folders")
         os.remove(downloaded_file)  # delete zip file
         os.remove(
             os.path.join(self.data_dir, "sample_submission_v2.csv")
@@ -129,50 +121,6 @@ class AirbusDataset(Dataset):
         )  # delete test data (cuz labels are not provided)
 
         print("Done!")
-
-    # def rle_decode(self, mask_rle, shape=(768, 768)):
-    #     '''
-    #     mask_rle: run-length as string formated (start length)
-    #     shape: (height,width) of array to return
-    #     Returns numpy array, 1 - mask, 0 - background
-    #     '''
-    #     s = mask_rle.split()
-    #     starts, lengths = [np.asarray(x, dtype=int) for x in (s[0:][::2], s[1:][::2])]
-    #     starts -= 1
-    #     ends = starts + lengths
-    #     img = np.zeros(shape[0]*shape[1], dtype=np.uint8)
-    #     for lo, hi in zip(starts, ends):
-    #         img[lo:hi] = 1
-    #     return img.reshape(shape).T  # Needed to align to RLE direction
-
-    # def masks_as_image(self, in_mask_list):
-    #     # Take the individual ship masks and create a single mask array for all ships
-    #     all_masks = np.zeros((768, 768), dtype = np.uint8)
-    #     for mask in in_mask_list:
-    #         if isinstance(mask, str):
-    #             all_masks |= self.rle_decode(mask)
-    #     return all_masks
-
-    # @staticmethod
-    # def mask_overlay(image, mask, color=(0, 1, 0)):
-    #     """
-    #     Helper function to visualize mask on the top of the image
-    #     """
-    #     mask = mask.squeeze() # mask could be (1, 768, 768) or (768, 768)
-    #     mask = np.dstack((mask, mask, mask)) * np.array(color, dtype=np.uint8) * 255
-    #     weighted_sum = cv2.addWeighted(mask, 0.5, image, 0.5, 0.)
-    #     img = image.copy()
-    #     ind = mask[:, :, 1] > 0
-    #     img[ind] = weighted_sum[ind]
-    #     return img
-
-    # @staticmethod
-    # def imshow(img, mask, title=None):
-    #     fig = plt.figure(figsize = (6,6))
-    #     plt.imshow(AirbusDataset.mask_overlay(img, mask))
-    #     if title is not None:
-    #         plt.title(title)
-    #     plt.show()
 
 
 if __name__ == "__main__":
