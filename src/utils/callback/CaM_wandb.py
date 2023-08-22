@@ -1,20 +1,12 @@
 import os
 from typing import Any, Optional
 
-import albumentations as A
-import cv2
 import numpy as np
-import pandas as pd
 import pytorch_lightning as pl
 import torch
-import torchvision.transforms as transforms
-import wandb
-from albumentations import Compose
-from albumentations.pytorch.transforms import ToTensorV2
 from PIL import Image
 from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.utilities.types import STEP_OUTPUT
-from torchvision.utils import make_grid
 
 from src.utils.airbus_utils import mask_overlay, masks_as_image
 from src.models.components.helper import partition_instances
@@ -23,13 +15,14 @@ class Callback(Callback):
     def __init__(
         self,
         data_path: str = "data/airbus",
-        n_images_to_log: int = 5,
+        n_images_to_log: int = 1,
     ):
         self.n_images_to_log = n_images_to_log
 
     def on_validation_batch_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule, outputs: STEP_OUTPUT, batch: Any, batch_idx: int, dataloader_idx: int) -> None:
         if self.n_images_to_log <= 0:
             return
+        n_images_to_log_val = self.n_images_to_log
 
         IMG_MEAN = [0.485, 0.456, 0.406]
         IMG_STD = [0.229, 0.224, 0.225]
@@ -57,7 +50,7 @@ class Callback(Callback):
         preds, _ = partition_instances(preds, preds_m, preds_c)
         
         for img, pred, target, id in zip(images, preds, labels, file_ids):
-            if self.n_images_to_log <= 0:
+            if n_images_to_log_val <= 0:
                 break
 
             img = (img.permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
@@ -78,7 +71,7 @@ class Callback(Callback):
                 caption=[id + "-Real", id + "-Predict", id + "-GroundTruth"],
             )
 
-            self.n_images_to_log -= 1
+            n_images_to_log_val -= 1
 
         
 

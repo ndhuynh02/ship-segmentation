@@ -119,6 +119,7 @@ class ResCaMUnetLitModule(LightningModule):
         self.log("val/IoU_m", self.val_metric_m, on_step=False, on_epoch=True, prog_bar=True)
 
         return {"loss": loss, "outputs": outputs, "labels": labels, "outputs_c": outputs_c, "outputs_m": outputs_m, "file_id": file_id}
+        # return {"loss": loss}
     
     def validation_epoch_end(self, outputs: List[Any]):
         acc = self.val_metric.compute()  # get current val acc

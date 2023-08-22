@@ -55,7 +55,7 @@ class ConvUpBlock(nn.Module):
         return x
 
 class Res_CaMUnet(nn.Module):
-    def __init__(self, layers=34, fixed_feature=True):
+    def __init__(self, layers=34, fixed_feature=False):
         super().__init__()
         # define pre-train model parameters
         if layers == 101:
@@ -119,3 +119,9 @@ class Res_CaMUnet(nn.Module):
         xm = self.cem(xm)
         xm = torch.sigmoid(xm)
         return xs, xc, xm
+
+if __name__ == "__main__":
+    x = torch.rand([1, 3, 256, 256])
+    model = Res_CaMUnet()
+    model = torch.jit.script(model)
+    y = model(x)
