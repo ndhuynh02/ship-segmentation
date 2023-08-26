@@ -71,33 +71,33 @@ class Res_CaMUnet(nn.Module):
         # define pre-train model parameters
         if layers == 101:
             builder = models.resnet101
-            l = [64, 256, 512, 1024, 2048]
+            layer = [64, 256, 512, 1024, 2048]
         else:
             builder = models.resnet34
-            l = [64, 64, 128, 256, 512]
+            layer = [64, 64, 128, 256, 512]
         # load weight of pre-trained resnet
         self.resnet = builder(weights=ResNet34_Weights.DEFAULT)
         if fixed_feature:
             for param in self.resnet.parameters():
                 param.requires_grad = False
         # segmentation up conv branch
-        self.u5s = ConvUpBlock(l[4], l[3])
-        self.u6s = ConvUpBlock(l[3], l[2])
-        self.u7s = ConvUpBlock(l[2], l[1])
-        self.u8s = ConvUpBlock(l[1], l[0])
-        self.ces = nn.ConvTranspose2d(l[0], 1, 2, stride=2)
+        self.u5s = ConvUpBlock(layer[4], layer[3])
+        self.u6s = ConvUpBlock(layer[3], layer[2])
+        self.u7s = ConvUpBlock(layer[2], layer[1])
+        self.u8s = ConvUpBlock(layer[1], layer[0])
+        self.ces = nn.ConvTranspose2d(layer[0], 1, 2, stride=2)
         # contour up conv branch
-        self.u5c = ConvUpBlock(l[4], l[3])
-        self.u6c = ConvUpBlock(l[3], l[2])
-        self.u7c = ConvUpBlock(l[2], l[1])
-        self.u8c = ConvUpBlock(l[1], l[0])
-        self.cec = nn.ConvTranspose2d(l[0], 1, 2, stride=2)
+        self.u5c = ConvUpBlock(layer[4], layer[3])
+        self.u6c = ConvUpBlock(layer[3], layer[2])
+        self.u7c = ConvUpBlock(layer[2], layer[1])
+        self.u8c = ConvUpBlock(layer[1], layer[0])
+        self.cec = nn.ConvTranspose2d(layer[0], 1, 2, stride=2)
         # marker up conv branch
-        self.u5m = ConvUpBlock(l[4], l[3])
-        self.u6m = ConvUpBlock(l[3], l[2])
-        self.u7m = ConvUpBlock(l[2], l[1])
-        self.u8m = ConvUpBlock(l[1], l[0])
-        self.cem = nn.ConvTranspose2d(l[0], 1, 2, stride=2)
+        self.u5m = ConvUpBlock(layer[4], layer[3])
+        self.u6m = ConvUpBlock(layer[3], layer[2])
+        self.u7m = ConvUpBlock(layer[2], layer[1])
+        self.u8m = ConvUpBlock(layer[1], layer[0])
+        self.cem = nn.ConvTranspose2d(layer[0], 1, 2, stride=2)
 
     def forward(self, x):
         x = self.resnet.conv1(x)
