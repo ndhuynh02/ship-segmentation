@@ -1,0 +1,3 @@
+wandb_callback:
+  _target_: src.utils.callback.wandb_C.Callback
+  n_images_to_log: 10

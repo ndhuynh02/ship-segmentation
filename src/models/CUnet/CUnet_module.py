@@ -3,9 +3,9 @@ from typing import Any, List
 
 import torch
 from pytorch_lightning import LightningModule
-from torchmetrics import JaccardIndex, MaxMetric, MeanMetric, Accuracy
+from torchmetrics import F1Score, MaxMetric, MeanMetric
 
-from src.models.loss_function.CaM_loss import FocalIoULoss
+from src.models.loss_function.CaM_loss import FocalBCELoss, FocalIoULoss
 from src.models.loss_function.lossbinary import LossBinary
 from src.models.loss_function.lovasz_loss import BCE_Lovasz
 
@@ -30,9 +30,9 @@ class ResCaMUnetLitModule(LightningModule):
         self.criterion = criterion
 
         # metric objects for calculating and averaging accuracy across batches
-        self.train_metric = Accuracy(task="binary", num_classes=2)
-        self.val_metric = Accuracy(task="binary", num_classes=2)
-        self.test_metric = Accuracy(task="binary", num_classes=2)
+        self.train_metric = F1Score(task="binary", num_classes=2)
+        self.val_metric = F1Score(task="binary", num_classes=2)
+        self.test_metric = F1Score(task="binary", num_classes=2)
 
         # for averaging loss across batches
         self.train_loss = MeanMetric()
@@ -41,8 +41,6 @@ class ResCaMUnetLitModule(LightningModule):
 
         # for tracking best so far validation accuracy
         self.val_metric_best = MaxMetric()
-        self.val_metric_c_best = MaxMetric()
-        self.val_metric_m_best = MaxMetric()
 
     def forward(self, x: torch.Tensor):
         return self.net(x)
@@ -57,20 +55,17 @@ class ResCaMUnetLitModule(LightningModule):
     def model_step(self, batch: Any):
         sample = batch
         input = sample["image"].to(self.device)
-        labels = sample["label"].to(self.device)
         labels_c = sample["label_c"].to(self.device)
-        labels_m = sample["label_m"].to(self.device)
         file_id = sample["file_id"]
         weights = None
         if "weight" in sample:
             weights = sample["weight"].to(self.device)
 
-        outputs, outputs_c, outputs_m = self.forward(input)
-        # print(outputs.shape, labels.shape, weights.shape)
+        outputs_c = self.forward(input)
 
-        if isinstance(self.criterion, (LossBinary, BCE_Lovasz)):
-            cnt1 = (labels == 1).sum().item()  # count number of class 1 in image
-            cnt0 = labels.numel() - cnt1
+        if isinstance(self.criterion, (LossBinary, BCE_Lovasz, FocalBCELoss)):
+            cnt1 = (labels_c == 1).sum().item()  # count number of class 1 in image
+            cnt0 = labels_c.numel() - cnt1
             if cnt1 != 0:
                 BCE_pos_weight = torch.FloatTensor([1.0 * cnt0 / cnt1]).to(device=self.device)
             else:
@@ -80,38 +75,23 @@ class ResCaMUnetLitModule(LightningModule):
         elif isinstance(self.criterion, (FocalIoULoss)):
             self.criterion.update_weight(weights)
 
-        loss = self.criterion(outputs, labels)
-        self.log("loss/loss_s", loss, on_step=False, on_epoch=True, prog_bar=True)
-        loss_c = self.criterion(outputs, labels)
-        self.log("loss/loss_c", loss_c, on_step=False, on_epoch=True, prog_bar=True)
-        loss_m = self.criterion(outputs, labels)
-        self.log("loss/loss_m", loss_m, on_step=False, on_epoch=True, prog_bar=True)
-
-        loss += loss_c + loss_m
+        loss = self.criterion(outputs_c, labels_c)
 
         # Code to try to fix CUDA out of memory issues
         gc.collect()
         torch.cuda.empty_cache()
 
-        return loss, outputs, outputs_c, outputs_m, labels, labels_c, labels_m, file_id
+        return loss, outputs_c, labels_c, file_id
 
     def training_step(self, batch: Any, batch_idx: int):
-        loss, outputs, outputs_c, outputs_m, labels, labels_c, labels_m, _ = self.model_step(batch)
+        loss, outputs_c, labels_c, _ = self.model_step(batch)
 
         # update and log metrics
         self.train_loss(loss)
-        self.train_metric(outputs, labels)
-        self.train_metric_c(outputs_c, labels_c)
-        self.train_metric_m(outputs_m, labels_m)
+        self.train_metric(outputs_c, labels_c)
 
         self.log("train/loss", self.train_loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log("train/metric", self.train_metric, on_step=False, on_epoch=True, prog_bar=True)
-        self.log(
-            "train/metric_c", self.train_metric_c, on_step=False, on_epoch=True, prog_bar=True
-        )
-        self.log(
-            "train/metric_m", self.train_metric_m, on_step=False, on_epoch=True, prog_bar=True
-        )
 
         # we can return here dict with any tensors
         # and then read it in some callback or in `training_epoch_end()` below
@@ -119,57 +99,39 @@ class ResCaMUnetLitModule(LightningModule):
         return {"loss": loss}
 
     def validation_step(self, batch: Any, batch_idx: int):
-        loss, outputs, outputs_c, outputs_m, labels, labels_c, labels_m, file_id = self.model_step(
-            batch
-        )
+        loss, outputs_c, labels_c, file_id = self.model_step(batch)
 
         # update and log metrics
         self.val_loss(loss)
-        self.val_metric(outputs, labels)
-        self.val_metric_c(outputs_c, labels_c)
-        self.val_metric_m(outputs_m, labels_m)
+        self.val_metric(outputs_c, labels_c)
 
         self.log("val/loss", self.val_loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log("val/metric", self.val_metric, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("val/metric_c", self.val_metric_c, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("val/metric_m", self.val_metric_m, on_step=False, on_epoch=True, prog_bar=True)
 
         return {
             "loss": loss,
-            "outputs": outputs,
-            "labels": labels,
+            "labels_c": labels_c,
             "outputs_c": outputs_c,
-            "outputs_m": outputs_m,
             "file_id": file_id,
         }
         # return {"loss": loss}
 
     def validation_epoch_end(self, outputs: List[Any]):
         acc = self.val_metric.compute()  # get current val acc
-        acc_c = self.val_metric_c.compute()
-        acc_m = self.val_metric_m.compute()
         self.val_metric_best(acc)  # update best so far val acc
-        self.val_metric_c_best(acc_c)
-        self.val_metric_m_best(acc_m)
         # log `val_acc_best` as a value through `.compute()` method, instead of as a metric object
         # otherwise metric would be reset by lightning after each epoch
         self.log("val/metric_best", self.val_metric_best.compute(), prog_bar=True)
-        self.log("val/metric_c_best", self.val_metric_c_best.compute(), prog_bar=True)
-        self.log("val/metric_m_best", self.val_metric_m_best.compute(), prog_bar=True)
 
     def test_step(self, batch: Any, batch_idx: int):
-        loss, outputs, outputs_c, outputs_m, labels, labels_c, labels_m, _ = self.model_step(batch)
+        loss, outputs_c, labels_c, _ = self.model_step(batch)
 
         # update and log metrics
         self.test_loss(loss)
-        self.test_metric(outputs, labels)
-        self.test_metric_c(outputs_c, labels_c)
-        self.test_metric_m(outputs_m, labels_m)
+        self.test_metric(outputs_c, labels_c)
 
         self.log("test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log("test/metric", self.test_metric, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("test/metric_c", self.test_metric_c, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("test/metric_m", self.test_metric_m, on_step=False, on_epoch=True, prog_bar=True)
 
         return {"loss": loss}
 
@@ -214,7 +176,7 @@ if __name__ == "__main__":
 
         model = hydra.utils.instantiate(cfg.model)
         batch = torch.rand(1, 3, 256, 256)
-        output, output_c, output_m = model(batch)
+        output = model(batch)
 
         print(f"output shape: {output.shape}")  # [1, 1, 256, 256]
 

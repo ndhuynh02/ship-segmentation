@@ -106,3 +106,30 @@ class FocalIoULoss(nn.Module):
         focal_loss = -((1 - pt) ** self.gamma) * logpt
         balanced_focal_loss = self.alpha * focal_loss
         return balanced_focal_loss + IoULoss().forward(inputs, targets)
+
+
+class FocalBCELoss(nn.Module):
+    def __init__(self, focusing_param=2, balance_param=0.25, weights=None, pos_weight=None):
+        super().__init__()
+        self.gamma = focusing_param
+        self.alpha = balance_param
+        self.weights = weights
+        self.pos_weight = pos_weight
+
+    def update_weight(self, weight: torch.FloatTensor = None):
+        if weight is not None:
+            self.weights = weight
+
+    def update_pos_weight(self, pos_weight: torch.FloatTensor = None):
+        if pos_weight is not None:
+            self.pos_weight = pos_weight
+
+    def forward(self, inputs, targets):
+        logpt = -binary_cross_entropy_with_logits(
+            inputs, targets, weight=self.weights, pos_weight=self.pos_weight
+        )
+        pt = torch.exp(logpt)
+        # compute the loss
+        focal_loss = -((1 - pt) ** self.gamma) * logpt
+        balanced_focal_loss = self.alpha * focal_loss
+        return balanced_focal_loss
