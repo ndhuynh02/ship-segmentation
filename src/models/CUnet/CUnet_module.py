@@ -3,7 +3,7 @@ from typing import Any, List
 
 import torch
 from pytorch_lightning import LightningModule
-from torchmetrics import JaccardIndex, MaxMetric, MeanMetric
+from torchmetrics import JaccardIndex, MaxMetric, MeanMetric, Accuracy
 
 from src.models.loss_function.CaM_loss import FocalIoULoss
 from src.models.loss_function.lossbinary import LossBinary
@@ -30,15 +30,9 @@ class ResCaMUnetLitModule(LightningModule):
         self.criterion = criterion
 
         # metric objects for calculating and averaging accuracy across batches
-        self.train_metric = JaccardIndex(task="binary", num_classes=2)
-        self.train_metric_c = JaccardIndex(task="binary", num_classes=2)
-        self.train_metric_m = JaccardIndex(task="binary", num_classes=2)
-        self.val_metric = JaccardIndex(task="binary", num_classes=2)
-        self.val_metric_c = JaccardIndex(task="binary", num_classes=2)
-        self.val_metric_m = JaccardIndex(task="binary", num_classes=2)
-        self.test_metric = JaccardIndex(task="binary", num_classes=2)
-        self.test_metric_c = JaccardIndex(task="binary", num_classes=2)
-        self.test_metric_m = JaccardIndex(task="binary", num_classes=2)
+        self.train_metric = Accuracy(task="binary", num_classes=2)
+        self.val_metric = Accuracy(task="binary", num_classes=2)
+        self.test_metric = Accuracy(task="binary", num_classes=2)
 
         # for averaging loss across batches
         self.train_loss = MeanMetric()
