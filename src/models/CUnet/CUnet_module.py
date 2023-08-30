@@ -10,7 +10,7 @@ from src.models.loss_function.lossbinary import LossBinary
 from src.models.loss_function.lovasz_loss import BCE_Lovasz
 
 
-class ResCaMUnetLitModule(LightningModule):
+class ResCUnetLitModule(LightningModule):
     def __init__(
         self,
         net: torch.nn.Module,
