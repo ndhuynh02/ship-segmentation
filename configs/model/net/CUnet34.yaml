@@ -1,0 +1,3 @@
+_target_: src.models.CUnet.components.CUnet34.CUnet34
+ckpt_path: null
+arch: null

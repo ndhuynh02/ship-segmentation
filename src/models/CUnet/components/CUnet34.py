@@ -9,8 +9,9 @@ from torchvision.models import (
     resnet101,
 )
 
-from models.classifier.classifier_module import ResNetLitModule
-from models.unet.components.resnet34 import ResNet34_Binary
+from src.models.unet.unet_module import UNetLitModule
+from src.models.unet.components.unet34 import Unet34
+from src.models.loss_function.lovasz_loss import LovaszLoss
 
 
 class UNet_Up_Block(torch.nn.Module):
@@ -41,19 +42,19 @@ class SaveFeatures:
         self.hook.remove()
 
 
-class Unet34(torch.nn.Module):
+class CUnet34(torch.nn.Module):
     def __init__(self, ckpt_path=None, arch=None):
         super().__init__()
         self.ckpt_path = ckpt_path
         if self.ckpt_path is not None:
-            model = ResNetLitModule.load_from_checkpoint(
+            model = UNetLitModule.load_from_checkpoint(
                 checkpoint_path=self.ckpt_path,
-                net=ResNet34_Binary(),
-                criterion=torch.nn.BCEWithLogitsLoss(),
+                net=Unet34(),
+                criterion=LovaszLoss(),
             ).net
-            p_rn34_feature_extractor = torch.nn.Sequential(*list(model.rn.children())[:-2])
+            p_rn34_feature_extractor = model.rn
             self.rn = p_rn34_feature_extractor
-            print("Using pretrained classifier")
+            print("Using pretrained encoder")
         else:
             self.arch = arch
             if self.arch == "resnet34":
@@ -99,7 +100,7 @@ class Unet34(torch.nn.Module):
 
 if __name__ == "__main__":
     x = torch.rand((1, 3, 256, 256))
-    model = Unet34()
+    model = CUnet34()
     print(model(x).shape)
     print(model(x).min())  # 'torch.Size([1, 1, 256, 256])
     print(model(x).max())

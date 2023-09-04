@@ -9,8 +9,8 @@ from torchvision.models import (
     resnet101,
 )
 
-from models.classifier.classifier_module import ResNetLitModule
-from models.unet.components.resnet34 import ResNet34_Binary
+from src.models.classifier.classifier_module import ResNetLitModule
+from src.models.unet.components.resnet34 import ResNet34_Binary
 
 
 class UNet_Up_Block(torch.nn.Module):
