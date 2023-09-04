@@ -1,6 +1,6 @@
-_target_: src.models.CUnet.CUnet_module.ResCUnetLitModule
+_target_: src.models.MUnet.MUnet_module.ResMUnetLitModule
 defaults:
-  - criterion: focalBCE_loss.yaml
+  - criterion: lovasz_loss.yaml
   - net: CUNet34.yaml
 
 optimizer:

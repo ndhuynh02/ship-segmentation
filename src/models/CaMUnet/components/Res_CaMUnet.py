@@ -16,10 +16,7 @@ class DilatedConvBlock(nn.Module):
         self.conv = nn.Conv2d(in_size, out_size, kernel_size, padding=dilation, dilation=dilation)
         self.norm = nn.BatchNorm2d(out_size)
         self.activation = activation
-        if dropout_rate > 0:
-            self.drop = nn.Dropout2d(p=dropout_rate)
-        else:
-            self.drop = lambda x: x  # no-op
+        self.drop = nn.Dropout2d(p=dropout_rate)
 
     def forward(self, x):
         # CAB: conv -> activation -> batch normal

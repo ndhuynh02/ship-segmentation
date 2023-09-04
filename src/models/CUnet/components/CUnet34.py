@@ -9,9 +9,9 @@ from torchvision.models import (
     resnet101,
 )
 
-from src.models.unet.unet_module import UNetLitModule
-from src.models.unet.components.unet34 import Unet34
 from src.models.loss_function.lovasz_loss import LovaszLoss
+from src.models.unet.components.unet34 import Unet34
+from src.models.unet.unet_module import UNetLitModule
 
 
 class UNet_Up_Block(torch.nn.Module):
@@ -43,7 +43,7 @@ class SaveFeatures:
 
 
 class CUnet34(torch.nn.Module):
-    def __init__(self, ckpt_path=None, arch=None):
+    def __init__(self, ckpt_path=None, arch=None, fixed_encoder=False):
         super().__init__()
         self.ckpt_path = ckpt_path
         if self.ckpt_path is not None:
@@ -77,6 +77,9 @@ class CUnet34(torch.nn.Module):
                 rn34_feature_extractor = torch.nn.Sequential(*list(rn34.children())[:-2])
                 self.rn = rn34_feature_extractor
                 print("arch input is not valid. Using torchvision.models ResNet34 as default.")
+        if fixed_encoder:
+            for param in self.rn.parameters():
+                param.requires_grad = False
         self.sfs = [SaveFeatures(self.rn[i]) for i in [2, 4, 5, 6]]
         self.up1 = UNet_Up_Block(512, 256, 256)
         self.up2 = UNet_Up_Block(256, 128, 256)
