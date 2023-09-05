@@ -96,7 +96,13 @@ class UNetLitModule(LightningModule):
         self.train_metric(preds, targets)
 
         self.log("train/loss", self.train_loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("train/jaccard", self.train_metric, on_step=False, on_epoch=True, prog_bar=True)
+        self.log(
+            "train/jaccard",
+            self.train_metric,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True,
+        )
 
         # we can return here dict with any tensors
         # and then read it in some callback or in `training_epoch_end()` below
@@ -130,7 +136,13 @@ class UNetLitModule(LightningModule):
         self.test_metric(preds, targets)
 
         self.log("test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("test/jaccard", self.test_metric, on_step=False, on_epoch=True, prog_bar=True)
+        self.log(
+            "test/jaccard",
+            self.test_metric,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True,
+        )
 
         return {"loss": loss, "preds": preds, "targets": targets}
 
