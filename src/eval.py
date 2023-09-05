@@ -6,6 +6,8 @@ from omegaconf import DictConfig
 from pytorch_lightning import Callback, LightningDataModule, LightningModule, Trainer
 from pytorch_lightning.loggers import Logger
 
+from src.models.combined_module import CombinedLitModule
+
 pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 # ------------------------------------------------------------------------------------ #
 # the setup_root above is equivalent to:
@@ -73,8 +75,10 @@ def evaluate(cfg: DictConfig) -> Tuple[dict, dict]:
         utils.log_hyperparameters(object_dict)
 
     log.info("Starting testing!")
-    # trainer.test(model=model, datamodule=datamodule, ckpt_path=cfg.ckpt_path)
-    trainer.test(model=model, datamodule=datamodule)
+    if isinstance(model, CombinedLitModule):
+        trainer.test(model=model, datamodule=datamodule)
+    else:
+        trainer.test(model=model, datamodule=datamodule, ckpt_path=cfg.ckpt_path)
     # for predictions use trainer.predict(...)
     # predictions = trainer.predict(model=model, dataloaders=dataloaders, ckpt_path=cfg.ckpt_path)
 
