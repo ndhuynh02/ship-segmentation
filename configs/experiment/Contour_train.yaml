@@ -29,4 +29,9 @@ logger:
     tags: ${tags}
     group: "ship-segmentation"
 
+model:
+  net:
+    fixed_encoder: false
+    ckpt_path: null
+
 ckpt_path: null
