@@ -93,6 +93,8 @@ class AirbusDataModule(LightningDataModule):
                     / (
                         self.hparams.train_val_test_split[1] + self.hparams.train_val_test_split[2]
                     ),
+                    stratify=valid_and_test_ids["counts"],
+                    shuffle=True,
                     random_state=42,
                 )
                 assert len(train_ids) + len(val_ids) + len(test_ids) == len(unique_img_ids)
