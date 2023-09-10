@@ -1,1 +1,1 @@
-_target_: src.models.components.unet.UNet
+_target_: src.models.unet.components.unet.UNet

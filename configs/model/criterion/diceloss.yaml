@@ -1,1 +1,1 @@
-_target_: src.models.components.diceloss.DiceLoss
+_target_: src.models.loss_function.diceloss.DiceLoss

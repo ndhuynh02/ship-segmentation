@@ -1,4 +1,4 @@
-_target_: src.models.components.mixedloss.MixedLoss
+_target_: src.models.loss_function.mixedloss.MixedLoss
 
 alpha: 0.5
 gamma: 2

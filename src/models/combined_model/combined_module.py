@@ -5,11 +5,11 @@ from pytorch_lightning import LightningModule
 from torchmetrics import JaccardIndex, MaxMetric, MeanMetric
 from torchmetrics.classification.accuracy import Accuracy
 
-from src.models.classifier_module import ResNetLitModule
-from src.models.components.lossbinary import LossBinary
-from src.models.components.resnet34 import ResNet34_Binary
-from src.models.components.unet34 import Unet34
-from src.models.unet_module import UNetLitModule
+from models.classifier.classifier_module import ResNetLitModule
+from models.unet.components.resnet34 import ResNet34_Binary
+from models.unet.components.unet34 import Unet34
+from models.unet.unet_module import UNetLitModule
+from src.models.loss_function.lossbinary import LossBinary
 
 
 class CombinedLitModule(LightningModule):

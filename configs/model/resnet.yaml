@@ -1,4 +1,4 @@
-_target_: src.models.classifier_module.ResNetLitModule
+_target_: src.models.classifier.classifier_module.ResNetLitModule
 
 optimizer:
   _target_: torch.optim.Adam
