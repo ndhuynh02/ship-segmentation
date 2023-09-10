@@ -6,7 +6,7 @@ from omegaconf import DictConfig
 from pytorch_lightning import Callback, LightningDataModule, LightningModule, Trainer
 from pytorch_lightning.loggers import Logger
 
-from src.models.combined_module import CombinedLitModule
+from models.combined_model.combined_module import CombinedLitModule
 
 pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 # ------------------------------------------------------------------------------------ #

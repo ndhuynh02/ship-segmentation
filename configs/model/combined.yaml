@@ -1,4 +1,4 @@
-_target_: src.models.combined_module.CombinedLitModule
+_target_: src.models.combined_model.combined_module.CombinedLitModule
 
 defaults:
   - criterion: lovasz_loss.yaml
