@@ -17,7 +17,7 @@ tags: ["classifier"]
 seed: 12345
 
 data:
-  _target_: src.data.airbus_datamodule_classifier.AirbusDataModuleClassifier
+  _target_: src.data.airbus_classifier_datamodule.AirbusDataModuleClassifier
   undersample: 105000 # number of non-ship images to remove, set to -1 to drop all non-ship images
   subset: 0 # set to 0 to use all data
   batch_size: 8
