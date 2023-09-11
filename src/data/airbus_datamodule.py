@@ -95,11 +95,10 @@ class AirbusDataModule(LightningDataModule):
                     ),
                     random_state=42,
                 )
+                # swap train_ids cho test_ids
                 train_ids, test_ids = test_ids, train_ids
-                
-                assert len(train_ids) + len(val_ids) + len(test_ids) == len(
-                    unique_img_ids
-                )
+
+                assert len(train_ids) + len(val_ids) + len(test_ids) == len(unique_img_ids)
 
                 if visualize_dist:
                     self.visualize_dist(masks, train_ids, val_ids, test_ids)

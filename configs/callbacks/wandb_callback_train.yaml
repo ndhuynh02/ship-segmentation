@@ -1,0 +1,4 @@
+wandb_callback_train:
+  _target_: src.utils.callback.wandb_train_log.WandbCallbackTrain
+  data_path: ${paths.data_dir}/airbus
+  img_size: 384
