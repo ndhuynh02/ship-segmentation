@@ -20,9 +20,7 @@ from src.utils.airbus_utils import mask_overlay, masks_as_image
 
 
 class WandbCallbackTrain(Callback):
-    def __init__(
-        self, data_path: str = "data/airbus", img_size: int = 384
-    ):
+    def __init__(self, data_path: str = "data/airbus", img_size: int = 384):
         self.img_size = img_size
         self.dataframe = pd.read_csv(os.path.join(data_path, "train_ship_segmentations_v2.csv"))
         self.good_dataframe = pd.read_csv(os.path.join("data_csv", "good_images.csv"))

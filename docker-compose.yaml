@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 services:
   api:
     build: .
@@ -8,10 +8,10 @@ services:
       - airbus_data:/workspace/data
     ports:
       - 8080:8080
-    shm_size: '2gb'  # set the shared memory size to 2GB
+    shm_size: "2gb" # set the shared memory size to 2GB
     ulimits:
       memlock: # unlimited
-        soft: -1 
+        soft: -1
         hard: -1
       stack: 67108864 # stack size limit
     deploy:
@@ -22,7 +22,7 @@ services:
               count: 1
               capabilities: [gpu]
     stdin_open: true # docker run -i
-    tty: true        # docker run -t
-    
+    tty: true # docker run -t
+
 volumes:
   airbus_data:

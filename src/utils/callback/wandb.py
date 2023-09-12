@@ -126,7 +126,9 @@ class WandbCallback(Callback):
         image_batch = torch.cat(self.eight_val_images, dim=0)
         image_batch = denormalize(image_batch)
 
-        for (image, pred, target) in zip(image_batch, self.eight_val_preds, self.eight_val_targets):
+        for (image, pred, target) in zip(
+            image_batch, self.eight_val_preds, self.eight_val_targets
+        ):
             image = image.squeeze()  # (3, 768, 768)
             image = image.cpu().numpy()
             image = (image * 255).astype(np.uint8)
