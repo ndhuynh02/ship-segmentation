@@ -86,6 +86,7 @@
     <input type="color" id="colorPicker" value="#00ff00">
     <input type="range" min="0" max="10" value="5" class="slider-pic" id="transparentMask">
     <button id="editMaskButton">Edit mask</button>
+    <input type="range" min="0" max="100" value="8" id="penSize" style="display: none;">
     <div class="wrappedImage">
       <img id="resultMask" style="display: none;">
       <img id="inputImage">
@@ -106,6 +107,7 @@
     const ctx = anotateMask.getContext('2d');
 
     const editMaskButton = document.getElementById('editMaskButton');
+    const penSize = document.getElementById('penSize');
     // Variables to track drawing and erasing modes
     let isDrawing = false;
     let isErasing = false;
@@ -121,11 +123,13 @@
           isDrawing = false;
           isErasing = false;
           editMaskButton.textContent = 'Edit Mask'
+          penSize.style.display = 'none'
           break;
         case 1:
           isDrawing = true;
           isErasing = false;
           editMaskButton.textContent = 'Drawing Mode'
+          penSize.style.display = 'block'
           break;
         case 2:
           isDrawing = false;
@@ -256,7 +260,7 @@
       if (e.buttons !== 1) return;
       ctx.beginPath(); // begin
       if (isDrawing) {
-        ctx.lineWidth = 5;
+        ctx.lineWidth = penSize.value;
         ctx.lineCap = 'round';
         ctx.globalCompositeOperation="source-over";
         ctx.strokeStyle = colorPicker.value;
@@ -270,9 +274,9 @@
       if (isErasing) {
         ctx.globalCompositeOperation="destination-out";
 
-        ctx.arc(pos.x, pos.y, 8, 0, Math.PI * 2, false);
+        ctx.arc(pos.x, pos.y, penSize.value, 0, Math.PI * 2, false);
         setPosition(e);
-        ctx.arc(pos.x, pos.y, 8, 0, Math.PI * 2, false);
+        ctx.arc(pos.x, pos.y, penSize.value, 0, Math.PI * 2, false);
 
         ctx.fill();
       }
