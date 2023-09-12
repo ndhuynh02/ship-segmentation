@@ -29,13 +29,7 @@ class WandbCallback(Callback):
         self.eight_val_preds = []
         self.eight_val_targets = []
         self.eight_val_images = []
-
-        self.show_pred = []
-        self.show_target = []
-
-        self.batch_size = 1
         self.num_samples = 8
-        self.num_batch = 0
         self.img_size = img_size
 
         image_path = os.path.join(data_path, "train_v2")
@@ -112,6 +106,9 @@ class WandbCallback(Callback):
         self.eight_val_targets.extend(targets[:n])
 
     def on_validation_epoch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"):
+
+        show_pred = []
+        show_target = []
         IMG_MEAN = [0.485, 0.456, 0.406]
         IMG_STD = [0.229, 0.224, 0.225]
 
@@ -139,17 +136,17 @@ class WandbCallback(Callback):
             log_pred = mask_overlay(image, pred)
             log_pred = np.transpose(log_pred, (2, 0, 1))
             log_pred = torch.from_numpy(log_pred)
-            self.show_pred.append(log_pred)
+            show_pred.append(log_pred)
 
             target = target.unsqueeze(0)
             target = target.cpu().numpy().astype(np.uint8)
             log_target = mask_overlay(image, target)
             log_target = np.transpose(log_target, (2, 0, 1))
             log_target = torch.from_numpy(log_target)
-            self.show_target.append(log_target)
+            show_target.append(log_target)
 
-        stack_pred = torch.stack(self.show_pred)
-        stack_target = torch.stack(self.show_target)
+        stack_pred = torch.stack(show_pred)
+        stack_target = torch.stack(show_target)
 
         grid_pred = make_grid(stack_pred, nrow=4)
         grid_target = make_grid(stack_target, nrow=4)
@@ -166,8 +163,8 @@ class WandbCallback(Callback):
         self.eight_val_targets.clear()
         self.eight_val_images.clear()
         self.eight_val_preds.clear()
-        self.show_pred.clear()
-        self.show_target.clear()
+        show_pred.clear()
+        show_target.clear()
 
     def on_test_batch_end(
         self,

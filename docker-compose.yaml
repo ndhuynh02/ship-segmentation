@@ -3,7 +3,7 @@ services:
   api:
     build: .
     image: ship-test-image # image name
-    container_name: ship-test-image # container name
+    container_name: ship-test-name # container name
     volumes:
       - airbus_data:/workspace/data
     ports:
