@@ -1,12 +1,13 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
 from src.models.unet3p.utils.init_weights import init_weights
 
 
 class unetConv2(nn.Module):
     def __init__(self, in_size, out_size, is_batchnorm, n=2, ks=3, stride=1, padding=1):
-        super(unetConv2, self).__init__()
+        super().__init__()
         self.n = n
         self.ks = ks
         self.stride = stride
@@ -47,13 +48,11 @@ class unetConv2(nn.Module):
 
 class unetUp(nn.Module):
     def __init__(self, in_size, out_size, is_deconv, n_concat=2):
-        super(unetUp, self).__init__()
+        super().__init__()
         # self.conv = unetConv2(in_size + (n_concat - 2) * out_size, out_size, False)
         self.conv = unetConv2(out_size * 2, out_size, False)
         if is_deconv:
-            self.up = nn.ConvTranspose2d(
-                in_size, out_size, kernel_size=4, stride=2, padding=1
-            )
+            self.up = nn.ConvTranspose2d(in_size, out_size, kernel_size=4, stride=2, padding=1)
         else:
             self.up = nn.UpsamplingBilinear2d(scale_factor=2)
 
@@ -74,13 +73,11 @@ class unetUp(nn.Module):
 
 class unetUp_origin(nn.Module):
     def __init__(self, in_size, out_size, is_deconv, n_concat=2):
-        super(unetUp_origin, self).__init__()
+        super().__init__()
         # self.conv = unetConv2(out_size*2, out_size, False)
         if is_deconv:
             self.conv = unetConv2(in_size + (n_concat - 2) * out_size, out_size, False)
-            self.up = nn.ConvTranspose2d(
-                in_size, out_size, kernel_size=4, stride=2, padding=1
-            )
+            self.up = nn.ConvTranspose2d(in_size, out_size, kernel_size=4, stride=2, padding=1)
         else:
             self.conv = unetConv2(in_size + (n_concat - 2) * out_size, out_size, False)
             self.up = nn.UpsamplingBilinear2d(scale_factor=2)
