@@ -1,13 +1,14 @@
-# -*- coding: utf-8 -*-
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from src.models.unet3p.utils.layers import unetConv2
-from src.models.unet3p.utils.init_weights import init_weights
 
-"""
-    UNet 3+
-"""
+from src.models.unet3p.utils.init_weights import init_weights
+from src.models.unet3p.utils.layers import unetConv2
+
+# """
+#     UNet 3+
+# """
 
 
 class UNet_3Plus(nn.Module):
@@ -19,7 +20,7 @@ class UNet_3Plus(nn.Module):
         is_deconv=True,
         is_batchnorm=True,
     ):
-        super(UNet_3Plus, self).__init__()
+        super().__init__()
         self.is_deconv = is_deconv
         self.in_channels = in_channels
         self.is_batchnorm = is_batchnorm
@@ -27,7 +28,7 @@ class UNet_3Plus(nn.Module):
 
         filters = [64, 128, 256, 512, 1024]
 
-        ## -------------Encoder--------------
+        # -------------Encoder--------------
         self.conv1 = unetConv2(self.in_channels, filters[0], self.is_batchnorm)
         self.maxpool1 = nn.MaxPool2d(kernel_size=2)
 
@@ -42,7 +43,7 @@ class UNet_3Plus(nn.Module):
 
         self.conv5 = unetConv2(filters[3], filters[4], self.is_batchnorm)
 
-        ## -------------Decoder--------------
+        # -------------Decoder--------------
         self.CatChannels = filters[0]
         self.CatBlocks = 5
         self.UpChannels = self.CatChannels * self.CatBlocks
@@ -102,9 +103,7 @@ class UNet_3Plus(nn.Module):
 
         # hd4->40*40, hd4->80*80, Upsample 2 times
         self.hd4_UT_hd3 = nn.Upsample(scale_factor=2, mode="bilinear")  # 14*14
-        self.hd4_UT_hd3_conv = nn.Conv2d(
-            self.UpChannels, self.CatChannels, 3, padding=1
-        )
+        self.hd4_UT_hd3_conv = nn.Conv2d(self.UpChannels, self.CatChannels, 3, padding=1)
         self.hd4_UT_hd3_bn = nn.BatchNorm2d(self.CatChannels)
         self.hd4_UT_hd3_relu = nn.ReLU(inplace=True)
 
@@ -133,17 +132,13 @@ class UNet_3Plus(nn.Module):
 
         # hd3->80*80, hd2->160*160, Upsample 2 times
         self.hd3_UT_hd2 = nn.Upsample(scale_factor=2, mode="bilinear")  # 14*14
-        self.hd3_UT_hd2_conv = nn.Conv2d(
-            self.UpChannels, self.CatChannels, 3, padding=1
-        )
+        self.hd3_UT_hd2_conv = nn.Conv2d(self.UpChannels, self.CatChannels, 3, padding=1)
         self.hd3_UT_hd2_bn = nn.BatchNorm2d(self.CatChannels)
         self.hd3_UT_hd2_relu = nn.ReLU(inplace=True)
 
         # hd4->40*40, hd2->160*160, Upsample 4 times
         self.hd4_UT_hd2 = nn.Upsample(scale_factor=4, mode="bilinear")  # 14*14
-        self.hd4_UT_hd2_conv = nn.Conv2d(
-            self.UpChannels, self.CatChannels, 3, padding=1
-        )
+        self.hd4_UT_hd2_conv = nn.Conv2d(self.UpChannels, self.CatChannels, 3, padding=1)
         self.hd4_UT_hd2_bn = nn.BatchNorm2d(self.CatChannels)
         self.hd4_UT_hd2_relu = nn.ReLU(inplace=True)
 
@@ -166,25 +161,19 @@ class UNet_3Plus(nn.Module):
 
         # hd2->160*160, hd1->320*320, Upsample 2 times
         self.hd2_UT_hd1 = nn.Upsample(scale_factor=2, mode="bilinear")  # 14*14
-        self.hd2_UT_hd1_conv = nn.Conv2d(
-            self.UpChannels, self.CatChannels, 3, padding=1
-        )
+        self.hd2_UT_hd1_conv = nn.Conv2d(self.UpChannels, self.CatChannels, 3, padding=1)
         self.hd2_UT_hd1_bn = nn.BatchNorm2d(self.CatChannels)
         self.hd2_UT_hd1_relu = nn.ReLU(inplace=True)
 
         # hd3->80*80, hd1->320*320, Upsample 4 times
         self.hd3_UT_hd1 = nn.Upsample(scale_factor=4, mode="bilinear")  # 14*14
-        self.hd3_UT_hd1_conv = nn.Conv2d(
-            self.UpChannels, self.CatChannels, 3, padding=1
-        )
+        self.hd3_UT_hd1_conv = nn.Conv2d(self.UpChannels, self.CatChannels, 3, padding=1)
         self.hd3_UT_hd1_bn = nn.BatchNorm2d(self.CatChannels)
         self.hd3_UT_hd1_relu = nn.ReLU(inplace=True)
 
         # hd4->40*40, hd1->320*320, Upsample 8 times
         self.hd4_UT_hd1 = nn.Upsample(scale_factor=8, mode="bilinear")  # 14*14
-        self.hd4_UT_hd1_conv = nn.Conv2d(
-            self.UpChannels, self.CatChannels, 3, padding=1
-        )
+        self.hd4_UT_hd1_conv = nn.Conv2d(self.UpChannels, self.CatChannels, 3, padding=1)
         self.hd4_UT_hd1_bn = nn.BatchNorm2d(self.CatChannels)
         self.hd4_UT_hd1_relu = nn.ReLU(inplace=True)
 
@@ -210,7 +199,7 @@ class UNet_3Plus(nn.Module):
                 init_weights(m, init_type="kaiming")
 
     def forward(self, inputs):
-        ## -------------Encoder-------------
+        # -------------Encoder-------------
         h1 = self.conv1(inputs)  # h1->320*320*64
 
         h2 = self.maxpool1(h1)
@@ -225,16 +214,10 @@ class UNet_3Plus(nn.Module):
         h5 = self.maxpool4(h4)
         hd5 = self.conv5(h5)  # h5->20*20*1024
 
-        ## -------------Decoder-------------
-        h1_PT_hd4 = self.h1_PT_hd4_relu(
-            self.h1_PT_hd4_bn(self.h1_PT_hd4_conv(self.h1_PT_hd4(h1)))
-        )
-        h2_PT_hd4 = self.h2_PT_hd4_relu(
-            self.h2_PT_hd4_bn(self.h2_PT_hd4_conv(self.h2_PT_hd4(h2)))
-        )
-        h3_PT_hd4 = self.h3_PT_hd4_relu(
-            self.h3_PT_hd4_bn(self.h3_PT_hd4_conv(self.h3_PT_hd4(h3)))
-        )
+        # -------------Decoder-------------
+        h1_PT_hd4 = self.h1_PT_hd4_relu(self.h1_PT_hd4_bn(self.h1_PT_hd4_conv(self.h1_PT_hd4(h1))))
+        h2_PT_hd4 = self.h2_PT_hd4_relu(self.h2_PT_hd4_bn(self.h2_PT_hd4_conv(self.h2_PT_hd4(h2))))
+        h3_PT_hd4 = self.h3_PT_hd4_relu(self.h3_PT_hd4_bn(self.h3_PT_hd4_conv(self.h3_PT_hd4(h3))))
         h4_Cat_hd4 = self.h4_Cat_hd4_relu(self.h4_Cat_hd4_bn(self.h4_Cat_hd4_conv(h4)))
         hd5_UT_hd4 = self.hd5_UT_hd4_relu(
             self.hd5_UT_hd4_bn(self.hd5_UT_hd4_conv(self.hd5_UT_hd4(hd5)))
@@ -242,19 +225,13 @@ class UNet_3Plus(nn.Module):
         hd4 = self.relu4d_1(
             self.bn4d_1(
                 self.conv4d_1(
-                    torch.cat(
-                        (h1_PT_hd4, h2_PT_hd4, h3_PT_hd4, h4_Cat_hd4, hd5_UT_hd4), 1
-                    )
+                    torch.cat((h1_PT_hd4, h2_PT_hd4, h3_PT_hd4, h4_Cat_hd4, hd5_UT_hd4), 1)
                 )
             )
         )  # hd4->40*40*UpChannels
 
-        h1_PT_hd3 = self.h1_PT_hd3_relu(
-            self.h1_PT_hd3_bn(self.h1_PT_hd3_conv(self.h1_PT_hd3(h1)))
-        )
-        h2_PT_hd3 = self.h2_PT_hd3_relu(
-            self.h2_PT_hd3_bn(self.h2_PT_hd3_conv(self.h2_PT_hd3(h2)))
-        )
+        h1_PT_hd3 = self.h1_PT_hd3_relu(self.h1_PT_hd3_bn(self.h1_PT_hd3_conv(self.h1_PT_hd3(h1))))
+        h2_PT_hd3 = self.h2_PT_hd3_relu(self.h2_PT_hd3_bn(self.h2_PT_hd3_conv(self.h2_PT_hd3(h2))))
         h3_Cat_hd3 = self.h3_Cat_hd3_relu(self.h3_Cat_hd3_bn(self.h3_Cat_hd3_conv(h3)))
         hd4_UT_hd3 = self.hd4_UT_hd3_relu(
             self.hd4_UT_hd3_bn(self.hd4_UT_hd3_conv(self.hd4_UT_hd3(hd4)))
@@ -265,16 +242,12 @@ class UNet_3Plus(nn.Module):
         hd3 = self.relu3d_1(
             self.bn3d_1(
                 self.conv3d_1(
-                    torch.cat(
-                        (h1_PT_hd3, h2_PT_hd3, h3_Cat_hd3, hd4_UT_hd3, hd5_UT_hd3), 1
-                    )
+                    torch.cat((h1_PT_hd3, h2_PT_hd3, h3_Cat_hd3, hd4_UT_hd3, hd5_UT_hd3), 1)
                 )
             )
         )  # hd3->80*80*UpChannels
 
-        h1_PT_hd2 = self.h1_PT_hd2_relu(
-            self.h1_PT_hd2_bn(self.h1_PT_hd2_conv(self.h1_PT_hd2(h1)))
-        )
+        h1_PT_hd2 = self.h1_PT_hd2_relu(self.h1_PT_hd2_bn(self.h1_PT_hd2_conv(self.h1_PT_hd2(h1))))
         h2_Cat_hd2 = self.h2_Cat_hd2_relu(self.h2_Cat_hd2_bn(self.h2_Cat_hd2_conv(h2)))
         hd3_UT_hd2 = self.hd3_UT_hd2_relu(
             self.hd3_UT_hd2_bn(self.hd3_UT_hd2_conv(self.hd3_UT_hd2(hd3)))
@@ -288,9 +261,7 @@ class UNet_3Plus(nn.Module):
         hd2 = self.relu2d_1(
             self.bn2d_1(
                 self.conv2d_1(
-                    torch.cat(
-                        (h1_PT_hd2, h2_Cat_hd2, hd3_UT_hd2, hd4_UT_hd2, hd5_UT_hd2), 1
-                    )
+                    torch.cat((h1_PT_hd2, h2_Cat_hd2, hd3_UT_hd2, hd4_UT_hd2, hd5_UT_hd2), 1)
                 )
             )
         )  # hd2->160*160*UpChannels
@@ -311,20 +282,19 @@ class UNet_3Plus(nn.Module):
         hd1 = self.relu1d_1(
             self.bn1d_1(
                 self.conv1d_1(
-                    torch.cat(
-                        (h1_Cat_hd1, hd2_UT_hd1, hd3_UT_hd1, hd4_UT_hd1, hd5_UT_hd1), 1
-                    )
+                    torch.cat((h1_Cat_hd1, hd2_UT_hd1, hd3_UT_hd1, hd4_UT_hd1, hd5_UT_hd1), 1)
                 )
             )
         )  # hd1->320*320*UpChannels
 
         d1 = self.outconv1(hd1)  # d1->320*320*n_classes
-        return F.sigmoid(d1)
+        # return F.sigmoid(d1)
+        return d1
 
 
-"""
-    UNet 3+ with deep supervision
-"""
+# """
+#     UNet 3+ with deep supervision
+# """
 
 
 class UNet_3Plus_DeepSup(nn.Module):
@@ -336,7 +306,7 @@ class UNet_3Plus_DeepSup(nn.Module):
         is_deconv=True,
         is_batchnorm=True,
     ):
-        super(UNet_3Plus_DeepSup, self).__init__()
+        super().__init__()
         self.is_deconv = is_deconv
         self.in_channels = in_channels
         self.is_batchnorm = is_batchnorm
@@ -344,7 +314,7 @@ class UNet_3Plus_DeepSup(nn.Module):
 
         filters = [64, 128, 256, 512, 1024]
 
-        ## -------------Encoder--------------
+        # -------------Encoder--------------
         self.conv1 = unetConv2(self.in_channels, filters[0], self.is_batchnorm)
         self.maxpool1 = nn.MaxPool2d(kernel_size=2)
 
@@ -359,7 +329,7 @@ class UNet_3Plus_DeepSup(nn.Module):
 
         self.conv5 = unetConv2(filters[3], filters[4], self.is_batchnorm)
 
-        ## -------------Decoder--------------
+        # -------------Decoder--------------
         self.CatChannels = filters[0]
         self.CatBlocks = 5
         self.UpChannels = self.CatChannels * self.CatBlocks
@@ -419,9 +389,7 @@ class UNet_3Plus_DeepSup(nn.Module):
 
         # hd4->40*40, hd4->80*80, Upsample 2 times
         self.hd4_UT_hd3 = nn.Upsample(scale_factor=2, mode="bilinear")  # 14*14
-        self.hd4_UT_hd3_conv = nn.Conv2d(
-            self.UpChannels, self.CatChannels, 3, padding=1
-        )
+        self.hd4_UT_hd3_conv = nn.Conv2d(self.UpChannels, self.CatChannels, 3, padding=1)
         self.hd4_UT_hd3_bn = nn.BatchNorm2d(self.CatChannels)
         self.hd4_UT_hd3_relu = nn.ReLU(inplace=True)
 
@@ -450,17 +418,13 @@ class UNet_3Plus_DeepSup(nn.Module):
 
         # hd3->80*80, hd2->160*160, Upsample 2 times
         self.hd3_UT_hd2 = nn.Upsample(scale_factor=2, mode="bilinear")  # 14*14
-        self.hd3_UT_hd2_conv = nn.Conv2d(
-            self.UpChannels, self.CatChannels, 3, padding=1
-        )
+        self.hd3_UT_hd2_conv = nn.Conv2d(self.UpChannels, self.CatChannels, 3, padding=1)
         self.hd3_UT_hd2_bn = nn.BatchNorm2d(self.CatChannels)
         self.hd3_UT_hd2_relu = nn.ReLU(inplace=True)
 
         # hd4->40*40, hd2->160*160, Upsample 4 times
         self.hd4_UT_hd2 = nn.Upsample(scale_factor=4, mode="bilinear")  # 14*14
-        self.hd4_UT_hd2_conv = nn.Conv2d(
-            self.UpChannels, self.CatChannels, 3, padding=1
-        )
+        self.hd4_UT_hd2_conv = nn.Conv2d(self.UpChannels, self.CatChannels, 3, padding=1)
         self.hd4_UT_hd2_bn = nn.BatchNorm2d(self.CatChannels)
         self.hd4_UT_hd2_relu = nn.ReLU(inplace=True)
 
@@ -483,25 +447,19 @@ class UNet_3Plus_DeepSup(nn.Module):
 
         # hd2->160*160, hd1->320*320, Upsample 2 times
         self.hd2_UT_hd1 = nn.Upsample(scale_factor=2, mode="bilinear")  # 14*14
-        self.hd2_UT_hd1_conv = nn.Conv2d(
-            self.UpChannels, self.CatChannels, 3, padding=1
-        )
+        self.hd2_UT_hd1_conv = nn.Conv2d(self.UpChannels, self.CatChannels, 3, padding=1)
         self.hd2_UT_hd1_bn = nn.BatchNorm2d(self.CatChannels)
         self.hd2_UT_hd1_relu = nn.ReLU(inplace=True)
 
         # hd3->80*80, hd1->320*320, Upsample 4 times
         self.hd3_UT_hd1 = nn.Upsample(scale_factor=4, mode="bilinear")  # 14*14
-        self.hd3_UT_hd1_conv = nn.Conv2d(
-            self.UpChannels, self.CatChannels, 3, padding=1
-        )
+        self.hd3_UT_hd1_conv = nn.Conv2d(self.UpChannels, self.CatChannels, 3, padding=1)
         self.hd3_UT_hd1_bn = nn.BatchNorm2d(self.CatChannels)
         self.hd3_UT_hd1_relu = nn.ReLU(inplace=True)
 
         # hd4->40*40, hd1->320*320, Upsample 8 times
         self.hd4_UT_hd1 = nn.Upsample(scale_factor=8, mode="bilinear")  # 14*14
-        self.hd4_UT_hd1_conv = nn.Conv2d(
-            self.UpChannels, self.CatChannels, 3, padding=1
-        )
+        self.hd4_UT_hd1_conv = nn.Conv2d(self.UpChannels, self.CatChannels, 3, padding=1)
         self.hd4_UT_hd1_bn = nn.BatchNorm2d(self.CatChannels)
         self.hd4_UT_hd1_relu = nn.ReLU(inplace=True)
 
@@ -517,7 +475,7 @@ class UNet_3Plus_DeepSup(nn.Module):
         self.relu1d_1 = nn.ReLU(inplace=True)
 
         # -------------Bilinear Upsampling--------------
-        self.upscore6 = nn.Upsample(scale_factor=32, mode="bilinear")  ###
+        self.upscore6 = nn.Upsample(scale_factor=32, mode="bilinear")
         self.upscore5 = nn.Upsample(scale_factor=16, mode="bilinear")
         self.upscore4 = nn.Upsample(scale_factor=8, mode="bilinear")
         self.upscore3 = nn.Upsample(scale_factor=4, mode="bilinear")
@@ -538,7 +496,7 @@ class UNet_3Plus_DeepSup(nn.Module):
                 init_weights(m, init_type="kaiming")
 
     def forward(self, inputs):
-        ## -------------Encoder-------------
+        # -------------Encoder-------------
         h1 = self.conv1(inputs)  # h1->320*320*64
 
         h2 = self.maxpool1(h1)
@@ -553,16 +511,10 @@ class UNet_3Plus_DeepSup(nn.Module):
         h5 = self.maxpool4(h4)
         hd5 = self.conv5(h5)  # h5->20*20*1024
 
-        ## -------------Decoder-------------
-        h1_PT_hd4 = self.h1_PT_hd4_relu(
-            self.h1_PT_hd4_bn(self.h1_PT_hd4_conv(self.h1_PT_hd4(h1)))
-        )
-        h2_PT_hd4 = self.h2_PT_hd4_relu(
-            self.h2_PT_hd4_bn(self.h2_PT_hd4_conv(self.h2_PT_hd4(h2)))
-        )
-        h3_PT_hd4 = self.h3_PT_hd4_relu(
-            self.h3_PT_hd4_bn(self.h3_PT_hd4_conv(self.h3_PT_hd4(h3)))
-        )
+        # -------------Decoder-------------
+        h1_PT_hd4 = self.h1_PT_hd4_relu(self.h1_PT_hd4_bn(self.h1_PT_hd4_conv(self.h1_PT_hd4(h1))))
+        h2_PT_hd4 = self.h2_PT_hd4_relu(self.h2_PT_hd4_bn(self.h2_PT_hd4_conv(self.h2_PT_hd4(h2))))
+        h3_PT_hd4 = self.h3_PT_hd4_relu(self.h3_PT_hd4_bn(self.h3_PT_hd4_conv(self.h3_PT_hd4(h3))))
         h4_Cat_hd4 = self.h4_Cat_hd4_relu(self.h4_Cat_hd4_bn(self.h4_Cat_hd4_conv(h4)))
         hd5_UT_hd4 = self.hd5_UT_hd4_relu(
             self.hd5_UT_hd4_bn(self.hd5_UT_hd4_conv(self.hd5_UT_hd4(hd5)))
@@ -570,19 +522,13 @@ class UNet_3Plus_DeepSup(nn.Module):
         hd4 = self.relu4d_1(
             self.bn4d_1(
                 self.conv4d_1(
-                    torch.cat(
-                        (h1_PT_hd4, h2_PT_hd4, h3_PT_hd4, h4_Cat_hd4, hd5_UT_hd4), 1
-                    )
+                    torch.cat((h1_PT_hd4, h2_PT_hd4, h3_PT_hd4, h4_Cat_hd4, hd5_UT_hd4), 1)
                 )
             )
         )  # hd4->40*40*UpChannels
 
-        h1_PT_hd3 = self.h1_PT_hd3_relu(
-            self.h1_PT_hd3_bn(self.h1_PT_hd3_conv(self.h1_PT_hd3(h1)))
-        )
-        h2_PT_hd3 = self.h2_PT_hd3_relu(
-            self.h2_PT_hd3_bn(self.h2_PT_hd3_conv(self.h2_PT_hd3(h2)))
-        )
+        h1_PT_hd3 = self.h1_PT_hd3_relu(self.h1_PT_hd3_bn(self.h1_PT_hd3_conv(self.h1_PT_hd3(h1))))
+        h2_PT_hd3 = self.h2_PT_hd3_relu(self.h2_PT_hd3_bn(self.h2_PT_hd3_conv(self.h2_PT_hd3(h2))))
         h3_Cat_hd3 = self.h3_Cat_hd3_relu(self.h3_Cat_hd3_bn(self.h3_Cat_hd3_conv(h3)))
         hd4_UT_hd3 = self.hd4_UT_hd3_relu(
             self.hd4_UT_hd3_bn(self.hd4_UT_hd3_conv(self.hd4_UT_hd3(hd4)))
@@ -593,16 +539,12 @@ class UNet_3Plus_DeepSup(nn.Module):
         hd3 = self.relu3d_1(
             self.bn3d_1(
                 self.conv3d_1(
-                    torch.cat(
-                        (h1_PT_hd3, h2_PT_hd3, h3_Cat_hd3, hd4_UT_hd3, hd5_UT_hd3), 1
-                    )
+                    torch.cat((h1_PT_hd3, h2_PT_hd3, h3_Cat_hd3, hd4_UT_hd3, hd5_UT_hd3), 1)
                 )
             )
         )  # hd3->80*80*UpChannels
 
-        h1_PT_hd2 = self.h1_PT_hd2_relu(
-            self.h1_PT_hd2_bn(self.h1_PT_hd2_conv(self.h1_PT_hd2(h1)))
-        )
+        h1_PT_hd2 = self.h1_PT_hd2_relu(self.h1_PT_hd2_bn(self.h1_PT_hd2_conv(self.h1_PT_hd2(h1))))
         h2_Cat_hd2 = self.h2_Cat_hd2_relu(self.h2_Cat_hd2_bn(self.h2_Cat_hd2_conv(h2)))
         hd3_UT_hd2 = self.hd3_UT_hd2_relu(
             self.hd3_UT_hd2_bn(self.hd3_UT_hd2_conv(self.hd3_UT_hd2(hd3)))
@@ -616,9 +558,7 @@ class UNet_3Plus_DeepSup(nn.Module):
         hd2 = self.relu2d_1(
             self.bn2d_1(
                 self.conv2d_1(
-                    torch.cat(
-                        (h1_PT_hd2, h2_Cat_hd2, hd3_UT_hd2, hd4_UT_hd2, hd5_UT_hd2), 1
-                    )
+                    torch.cat((h1_PT_hd2, h2_Cat_hd2, hd3_UT_hd2, hd4_UT_hd2, hd5_UT_hd2), 1)
                 )
             )
         )  # hd2->160*160*UpChannels
@@ -639,9 +579,7 @@ class UNet_3Plus_DeepSup(nn.Module):
         hd1 = self.relu1d_1(
             self.bn1d_1(
                 self.conv1d_1(
-                    torch.cat(
-                        (h1_Cat_hd1, hd2_UT_hd1, hd3_UT_hd1, hd4_UT_hd1, hd5_UT_hd1), 1
-                    )
+                    torch.cat((h1_Cat_hd1, hd2_UT_hd1, hd3_UT_hd1, hd4_UT_hd1, hd5_UT_hd1), 1)
                 )
             )
         )  # hd1->320*320*UpChannels
@@ -659,12 +597,13 @@ class UNet_3Plus_DeepSup(nn.Module):
         d2 = self.upscore2(d2)  # 128->256
 
         d1 = self.outconv1(hd1)  # 256
-        return F.sigmoid(d1), F.sigmoid(d2), F.sigmoid(d3), F.sigmoid(d4), F.sigmoid(d5)
+        # return F.sigmoid(d1), F.sigmoid(d2), F.sigmoid(d3), F.sigmoid(d4), F.sigmoid(d5)
+        return d1, d2, d3, d4, d5
 
 
-"""
-    UNet 3+ with deep supervision and class-guided module
-"""
+# """
+#     UNet 3+ with deep supervision and class-guided module
+# """
 
 
 class UNet_3Plus_DeepSup_CGM(nn.Module):
@@ -676,7 +615,7 @@ class UNet_3Plus_DeepSup_CGM(nn.Module):
         is_deconv=True,
         is_batchnorm=True,
     ):
-        super(UNet_3Plus_DeepSup_CGM, self).__init__()
+        super().__init__()
         self.is_deconv = is_deconv
         self.in_channels = in_channels
         self.is_batchnorm = is_batchnorm
@@ -684,7 +623,7 @@ class UNet_3Plus_DeepSup_CGM(nn.Module):
 
         filters = [64, 128, 256, 512, 1024]
 
-        ## -------------Encoder--------------
+        # -------------Encoder--------------
         self.conv1 = unetConv2(self.in_channels, filters[0], self.is_batchnorm)
         self.maxpool1 = nn.MaxPool2d(kernel_size=2)
 
@@ -699,7 +638,7 @@ class UNet_3Plus_DeepSup_CGM(nn.Module):
 
         self.conv5 = unetConv2(filters[3], filters[4], self.is_batchnorm)
 
-        ## -------------Decoder--------------
+        # -------------Decoder--------------
         self.CatChannels = filters[0]
         self.CatBlocks = 5
         self.UpChannels = self.CatChannels * self.CatBlocks
@@ -759,9 +698,7 @@ class UNet_3Plus_DeepSup_CGM(nn.Module):
 
         # hd4->40*40, hd4->80*80, Upsample 2 times
         self.hd4_UT_hd3 = nn.Upsample(scale_factor=2, mode="bilinear")  # 14*14
-        self.hd4_UT_hd3_conv = nn.Conv2d(
-            self.UpChannels, self.CatChannels, 3, padding=1
-        )
+        self.hd4_UT_hd3_conv = nn.Conv2d(self.UpChannels, self.CatChannels, 3, padding=1)
         self.hd4_UT_hd3_bn = nn.BatchNorm2d(self.CatChannels)
         self.hd4_UT_hd3_relu = nn.ReLU(inplace=True)
 
@@ -790,17 +727,13 @@ class UNet_3Plus_DeepSup_CGM(nn.Module):
 
         # hd3->80*80, hd2->160*160, Upsample 2 times
         self.hd3_UT_hd2 = nn.Upsample(scale_factor=2, mode="bilinear")  # 14*14
-        self.hd3_UT_hd2_conv = nn.Conv2d(
-            self.UpChannels, self.CatChannels, 3, padding=1
-        )
+        self.hd3_UT_hd2_conv = nn.Conv2d(self.UpChannels, self.CatChannels, 3, padding=1)
         self.hd3_UT_hd2_bn = nn.BatchNorm2d(self.CatChannels)
         self.hd3_UT_hd2_relu = nn.ReLU(inplace=True)
 
         # hd4->40*40, hd2->160*160, Upsample 4 times
         self.hd4_UT_hd2 = nn.Upsample(scale_factor=4, mode="bilinear")  # 14*14
-        self.hd4_UT_hd2_conv = nn.Conv2d(
-            self.UpChannels, self.CatChannels, 3, padding=1
-        )
+        self.hd4_UT_hd2_conv = nn.Conv2d(self.UpChannels, self.CatChannels, 3, padding=1)
         self.hd4_UT_hd2_bn = nn.BatchNorm2d(self.CatChannels)
         self.hd4_UT_hd2_relu = nn.ReLU(inplace=True)
 
@@ -823,25 +756,19 @@ class UNet_3Plus_DeepSup_CGM(nn.Module):
 
         # hd2->160*160, hd1->320*320, Upsample 2 times
         self.hd2_UT_hd1 = nn.Upsample(scale_factor=2, mode="bilinear")  # 14*14
-        self.hd2_UT_hd1_conv = nn.Conv2d(
-            self.UpChannels, self.CatChannels, 3, padding=1
-        )
+        self.hd2_UT_hd1_conv = nn.Conv2d(self.UpChannels, self.CatChannels, 3, padding=1)
         self.hd2_UT_hd1_bn = nn.BatchNorm2d(self.CatChannels)
         self.hd2_UT_hd1_relu = nn.ReLU(inplace=True)
 
         # hd3->80*80, hd1->320*320, Upsample 4 times
         self.hd3_UT_hd1 = nn.Upsample(scale_factor=4, mode="bilinear")  # 14*14
-        self.hd3_UT_hd1_conv = nn.Conv2d(
-            self.UpChannels, self.CatChannels, 3, padding=1
-        )
+        self.hd3_UT_hd1_conv = nn.Conv2d(self.UpChannels, self.CatChannels, 3, padding=1)
         self.hd3_UT_hd1_bn = nn.BatchNorm2d(self.CatChannels)
         self.hd3_UT_hd1_relu = nn.ReLU(inplace=True)
 
         # hd4->40*40, hd1->320*320, Upsample 8 times
         self.hd4_UT_hd1 = nn.Upsample(scale_factor=8, mode="bilinear")  # 14*14
-        self.hd4_UT_hd1_conv = nn.Conv2d(
-            self.UpChannels, self.CatChannels, 3, padding=1
-        )
+        self.hd4_UT_hd1_conv = nn.Conv2d(self.UpChannels, self.CatChannels, 3, padding=1)
         self.hd4_UT_hd1_bn = nn.BatchNorm2d(self.CatChannels)
         self.hd4_UT_hd1_relu = nn.ReLU(inplace=True)
 
@@ -857,7 +784,7 @@ class UNet_3Plus_DeepSup_CGM(nn.Module):
         self.relu1d_1 = nn.ReLU(inplace=True)
 
         # -------------Bilinear Upsampling--------------
-        self.upscore6 = nn.Upsample(scale_factor=32, mode="bilinear")  ###
+        self.upscore6 = nn.Upsample(scale_factor=32, mode="bilinear")
         self.upscore5 = nn.Upsample(scale_factor=16, mode="bilinear")
         self.upscore4 = nn.Upsample(scale_factor=8, mode="bilinear")
         self.upscore3 = nn.Upsample(scale_factor=4, mode="bilinear")
@@ -892,7 +819,7 @@ class UNet_3Plus_DeepSup_CGM(nn.Module):
         return final
 
     def forward(self, inputs):
-        ## -------------Encoder-------------
+        # -------------Encoder-------------
         h1 = self.conv1(inputs)  # h1->320*320*64
 
         h2 = self.maxpool1(h1)
@@ -912,16 +839,10 @@ class UNet_3Plus_DeepSup_CGM(nn.Module):
         cls_branch_max = cls_branch.argmax(dim=1)
         cls_branch_max = cls_branch_max[:, np.newaxis].float()
 
-        ## -------------Decoder-------------
-        h1_PT_hd4 = self.h1_PT_hd4_relu(
-            self.h1_PT_hd4_bn(self.h1_PT_hd4_conv(self.h1_PT_hd4(h1)))
-        )
-        h2_PT_hd4 = self.h2_PT_hd4_relu(
-            self.h2_PT_hd4_bn(self.h2_PT_hd4_conv(self.h2_PT_hd4(h2)))
-        )
-        h3_PT_hd4 = self.h3_PT_hd4_relu(
-            self.h3_PT_hd4_bn(self.h3_PT_hd4_conv(self.h3_PT_hd4(h3)))
-        )
+        # -------------Decoder-------------
+        h1_PT_hd4 = self.h1_PT_hd4_relu(self.h1_PT_hd4_bn(self.h1_PT_hd4_conv(self.h1_PT_hd4(h1))))
+        h2_PT_hd4 = self.h2_PT_hd4_relu(self.h2_PT_hd4_bn(self.h2_PT_hd4_conv(self.h2_PT_hd4(h2))))
+        h3_PT_hd4 = self.h3_PT_hd4_relu(self.h3_PT_hd4_bn(self.h3_PT_hd4_conv(self.h3_PT_hd4(h3))))
         h4_Cat_hd4 = self.h4_Cat_hd4_relu(self.h4_Cat_hd4_bn(self.h4_Cat_hd4_conv(h4)))
         hd5_UT_hd4 = self.hd5_UT_hd4_relu(
             self.hd5_UT_hd4_bn(self.hd5_UT_hd4_conv(self.hd5_UT_hd4(hd5)))
@@ -929,19 +850,13 @@ class UNet_3Plus_DeepSup_CGM(nn.Module):
         hd4 = self.relu4d_1(
             self.bn4d_1(
                 self.conv4d_1(
-                    torch.cat(
-                        (h1_PT_hd4, h2_PT_hd4, h3_PT_hd4, h4_Cat_hd4, hd5_UT_hd4), 1
-                    )
+                    torch.cat((h1_PT_hd4, h2_PT_hd4, h3_PT_hd4, h4_Cat_hd4, hd5_UT_hd4), 1)
                 )
             )
         )  # hd4->40*40*UpChannels
 
-        h1_PT_hd3 = self.h1_PT_hd3_relu(
-            self.h1_PT_hd3_bn(self.h1_PT_hd3_conv(self.h1_PT_hd3(h1)))
-        )
-        h2_PT_hd3 = self.h2_PT_hd3_relu(
-            self.h2_PT_hd3_bn(self.h2_PT_hd3_conv(self.h2_PT_hd3(h2)))
-        )
+        h1_PT_hd3 = self.h1_PT_hd3_relu(self.h1_PT_hd3_bn(self.h1_PT_hd3_conv(self.h1_PT_hd3(h1))))
+        h2_PT_hd3 = self.h2_PT_hd3_relu(self.h2_PT_hd3_bn(self.h2_PT_hd3_conv(self.h2_PT_hd3(h2))))
         h3_Cat_hd3 = self.h3_Cat_hd3_relu(self.h3_Cat_hd3_bn(self.h3_Cat_hd3_conv(h3)))
         hd4_UT_hd3 = self.hd4_UT_hd3_relu(
             self.hd4_UT_hd3_bn(self.hd4_UT_hd3_conv(self.hd4_UT_hd3(hd4)))
@@ -952,16 +867,12 @@ class UNet_3Plus_DeepSup_CGM(nn.Module):
         hd3 = self.relu3d_1(
             self.bn3d_1(
                 self.conv3d_1(
-                    torch.cat(
-                        (h1_PT_hd3, h2_PT_hd3, h3_Cat_hd3, hd4_UT_hd3, hd5_UT_hd3), 1
-                    )
+                    torch.cat((h1_PT_hd3, h2_PT_hd3, h3_Cat_hd3, hd4_UT_hd3, hd5_UT_hd3), 1)
                 )
             )
         )  # hd3->80*80*UpChannels
 
-        h1_PT_hd2 = self.h1_PT_hd2_relu(
-            self.h1_PT_hd2_bn(self.h1_PT_hd2_conv(self.h1_PT_hd2(h1)))
-        )
+        h1_PT_hd2 = self.h1_PT_hd2_relu(self.h1_PT_hd2_bn(self.h1_PT_hd2_conv(self.h1_PT_hd2(h1))))
         h2_Cat_hd2 = self.h2_Cat_hd2_relu(self.h2_Cat_hd2_bn(self.h2_Cat_hd2_conv(h2)))
         hd3_UT_hd2 = self.hd3_UT_hd2_relu(
             self.hd3_UT_hd2_bn(self.hd3_UT_hd2_conv(self.hd3_UT_hd2(hd3)))
@@ -975,9 +886,7 @@ class UNet_3Plus_DeepSup_CGM(nn.Module):
         hd2 = self.relu2d_1(
             self.bn2d_1(
                 self.conv2d_1(
-                    torch.cat(
-                        (h1_PT_hd2, h2_Cat_hd2, hd3_UT_hd2, hd4_UT_hd2, hd5_UT_hd2), 1
-                    )
+                    torch.cat((h1_PT_hd2, h2_Cat_hd2, hd3_UT_hd2, hd4_UT_hd2, hd5_UT_hd2), 1)
                 )
             )
         )  # hd2->160*160*UpChannels
@@ -998,9 +907,7 @@ class UNet_3Plus_DeepSup_CGM(nn.Module):
         hd1 = self.relu1d_1(
             self.bn1d_1(
                 self.conv1d_1(
-                    torch.cat(
-                        (h1_Cat_hd1, hd2_UT_hd1, hd3_UT_hd1, hd4_UT_hd1, hd5_UT_hd1), 1
-                    )
+                    torch.cat((h1_Cat_hd1, hd2_UT_hd1, hd3_UT_hd1, hd4_UT_hd1, hd5_UT_hd1), 1)
                 )
             )
         )  # hd1->320*320*UpChannels
@@ -1025,12 +932,15 @@ class UNet_3Plus_DeepSup_CGM(nn.Module):
         d4 = self.dotProduct(d4, cls_branch_max)
         d5 = self.dotProduct(d5, cls_branch_max)
 
-        return F.sigmoid(d1), F.sigmoid(d2), F.sigmoid(d3), F.sigmoid(d4), F.sigmoid(d5)
+        # return F.sigmoid(d1), F.sigmoid(d2), F.sigmoid(d3), F.sigmoid(d4), F.sigmoid(d5)
+        return d1, d2, d3, d4, d5
 
 
 if __name__ == "__main__":
-    x = torch.rand((1, 3, 256, 256))
-    model = UNet_3Plus()
-    print(model(x).shape)
-    print(model(x).min())  # 'torch.Size([1, 1, 256, 256])
-    print(model(x).max())
+    x = torch.rand((8, 3, 256, 256))
+    model = UNet_3Plus_DeepSup_CGM()
+    output = model(x)
+    print(output)
+    # print(model(x).shape)
+    for i in range(len(output)):
+        print(output[i].shape)

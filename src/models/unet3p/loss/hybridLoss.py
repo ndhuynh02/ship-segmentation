@@ -1,12 +1,13 @@
 import torch
 import torch.nn as nn
+
 from src.models.unet3p.loss.iouLoss import IOU
 from src.models.unet3p.loss.msssimLoss import MSSSIM
 
 
 class HybridLoss(nn.Module):
     def __init__(self):
-        super(HybridLoss, self).__init__()
+        super().__init__()
 
         # Instantiate the individual loss functions
         self.bce_loss = nn.BCELoss(size_average=True)
