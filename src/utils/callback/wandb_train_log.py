@@ -22,6 +22,8 @@ from src.utils.airbus_utils import mask_overlay, masks_as_image
 class WandbCallbackTrain(Callback):
     def __init__(self, data_path: str = "data/airbus", img_size: int = 384):
         self.img_size = img_size
+        self.sample_image_width = 768
+        self.sample_image_height = 768
         self.dataframe = pd.read_csv(os.path.join(data_path, "train_ship_segmentations_v2.csv"))
         self.good_dataframe = pd.read_csv(os.path.join("data_csv", "good_images.csv"))
         self.bad_dataframe = pd.read_csv(os.path.join("data_csv", "bad_images.csv"))
@@ -57,7 +59,14 @@ class WandbCallbackTrain(Callback):
 
             pred_mask = torch.sigmoid(pred_mask)
             pred_mask = pred_mask >= 0.5
+            pred_mask = pred_mask.squeeze(0)
+            pred_mask = pred_mask.permute(1, 2, 0)
             pred_mask = pred_mask.cpu().numpy().astype(np.uint8)
+            pred_mask = cv2.resize(
+                pred_mask,
+                (self.sample_image_width, self.sample_image_height),
+                interpolation=cv2.INTER_CUBIC,
+            )
 
             log_pred_good = mask_overlay(good_image, pred_mask)
             log_pred_good = np.transpose(log_pred_good, (2, 0, 1))
@@ -99,6 +108,7 @@ class WandbCallbackTrain(Callback):
             log_real_image = torch.from_numpy(log_real_image)
 
             transformed = self.transform(image=bad_image)
+
             image = transformed["image"]  # (3, 768, 768)
             image = image.unsqueeze(0).to(trainer.model.device)  # (1, 3, 768, 768)
 
@@ -107,7 +117,14 @@ class WandbCallbackTrain(Callback):
 
             pred_mask = torch.sigmoid(pred_mask)
             pred_mask = pred_mask >= 0.5
+            pred_mask = pred_mask.squeeze(0)
+            pred_mask = pred_mask.permute(1, 2, 0)
             pred_mask = pred_mask.cpu().numpy().astype(np.uint8)
+            pred_mask = cv2.resize(
+                pred_mask,
+                (self.sample_image_width, self.sample_image_height),
+                interpolation=cv2.INTER_CUBIC,
+            )
 
             log_pred_bad = mask_overlay(bad_image, pred_mask)
             log_pred_bad = np.transpose(log_pred_bad, (2, 0, 1))
