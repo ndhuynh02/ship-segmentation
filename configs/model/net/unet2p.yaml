@@ -1,0 +1,7 @@
+_target_: src.models.components.unet2p.UNet_2Plus
+in_channels: 3
+n_classes: 1
+feature_scale: 4
+is_deconv: True
+is_batchnorm: True
+is_ds: True
