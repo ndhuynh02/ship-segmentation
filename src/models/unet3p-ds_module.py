@@ -81,23 +81,21 @@ class UNetLitModule(LightningModule):
             self.criterion.update_pos_weight(pos_weight=BCE_pos_weight)
 
         preds = self.forward(x)
-        loss_dict = {}
-        for i, pred in enumerate(preds):
-            loss = self.criterion(pred, y)
-            loss_dict[f"loss_d{i + 1}"] = loss.item()
+        losses = [self.criterion(pred, y) for pred in preds]
+        loss = sum(losses)
 
         # Code to try to fix CUDA out of memory issues
         del x
         gc.collect()
         torch.cuda.empty_cache()
 
-        return loss_dict, preds, y
+        return loss, preds, y
 
     def training_step(self, batch: Any, batch_idx: int):
-        loss_dict, preds, targets = self.model_step(batch)
+        loss, preds, targets = self.model_step(batch)
 
         # update and log metrics
-        self.train_loss(loss_dict["loss_d1"])
+        self.train_loss(loss)
         self.train_metric(preds[0], targets)
 
         self.log(
@@ -114,13 +112,13 @@ class UNetLitModule(LightningModule):
         # we can return here dict with any tensors
         # and then read it in some callback or in `training_epoch_end()` below
         # remember to always return loss from `training_step()` or backpropagation will fail!
-        return {"loss": loss_dict}
+        return {"loss": loss}
 
     def validation_step(self, batch: Any, batch_idx: int):
-        loss_dict, preds, targets = self.model_step(batch)
+        loss, preds, targets = self.model_step(batch)
 
         # update and log metrics
-        self.val_loss(loss_dict["loss_d1"])
+        self.val_loss(loss)
         self.val_metric(preds[0], targets)
 
         self.log("val/loss", self.val_loss, on_step=False, on_epoch=True, prog_bar=True)
@@ -128,7 +126,7 @@ class UNetLitModule(LightningModule):
             "val/jaccard", self.val_metric, on_step=False, on_epoch=True, prog_bar=True
         )
 
-        return {"loss": loss_dict, "preds": preds, "targets": targets}
+        return {"loss": loss, "preds": preds, "targets": targets}
 
     def validation_epoch_end(self, outputs: List[Any]):
         acc = self.val_metric.compute()  # get current val acc
@@ -138,10 +136,10 @@ class UNetLitModule(LightningModule):
         self.log("val/jaccard_best", self.val_metric_best.compute(), prog_bar=True)
 
     def test_step(self, batch: Any, batch_idx: int):
-        loss_dict, preds, targets = self.model_step(batch)
+        loss, preds, targets = self.model_step(batch)
 
         # update and log metrics
-        self.test_loss(loss_dict["loss_d1"])
+        self.test_loss(loss)
         self.test_metric(preds[0], targets)
 
         self.log(
@@ -155,7 +153,7 @@ class UNetLitModule(LightningModule):
             prog_bar=True,
         )
 
-        return {"loss": loss_dict, "preds": preds, "targets": targets}
+        return {"loss": loss, "preds": preds, "targets": targets}
 
     def predict_step(self, batch: Any, batch_idx: int):
         preds = self.forward(batch)

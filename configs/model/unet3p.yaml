@@ -1,0 +1,17 @@
+_target_: src.models.unet3p-ds_module.UNetLitModule
+defaults:
+  - criterion: mixedloss.yaml
+  - net: unet3p_ds_cgm.yaml
+
+optimizer:
+  _target_: torch.optim.Adam
+  _partial_: true
+  lr: 0.0001
+  weight_decay: 0.0
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+  _partial_: true
+  mode: min
+  factor: 0.1
+  patience: 10
