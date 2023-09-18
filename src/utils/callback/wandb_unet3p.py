@@ -46,9 +46,7 @@ class WandbCallback(Callback):
             self.sample_image.shape[0],
             self.sample_image.shape[1],
         )
-        dataframe = pd.read_csv(
-            os.path.join(data_path, "train_ship_segmentations_v2.csv")
-        )
+        dataframe = pd.read_csv(os.path.join(data_path, "train_ship_segmentations_v2.csv"))
         self.sample_mask = dataframe[dataframe["ImageId"] == image_id]["EncodedPixels"]
         self.sample_mask = masks_as_image(self.sample_mask)
 
@@ -67,14 +65,10 @@ class WandbCallback(Callback):
             images=[Image.fromarray(mask_overlay(self.sample_image, self.sample_mask))],
         )
 
-    def on_train_epoch_end(
-        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
-    ):
+    def on_train_epoch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"):
         transformed = self.transform(image=self.sample_image)
         image = transformed["image"]  # (3, img_size, img_size)
-        image = image.unsqueeze(0).to(
-            trainer.model.device
-        )  # (1, 3, img_size, img_size)
+        image = image.unsqueeze(0).to(trainer.model.device)  # (1, 3, img_size, img_size)
 
         pred_mask = trainer.model(image)[0]
         pred_mask = pred_mask.detach()  # (1, 1, img_size, img_size)
@@ -117,9 +111,7 @@ class WandbCallback(Callback):
         self.four_first_preds.extend(preds[:n])
         self.four_first_targets.extend(targets[:n])
 
-    def on_validation_epoch_end(
-        self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"
-    ):
+    def on_validation_epoch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"):
         IMG_MEAN = [0.485, 0.456, 0.406]
         IMG_STD = [0.229, 0.224, 0.225]
 
@@ -180,9 +172,7 @@ class WandbCallback(Callback):
         grid_target_np = Image.fromarray(grid_target_np)
 
         wandb_logger = trainer.logger
-        wandb_logger.log_image(
-            key="predicted mask", images=[grid_pred_np, grid_target_np]
-        )
+        wandb_logger.log_image(key="predicted mask", images=[grid_pred_np, grid_target_np])
 
         self.four_first_preds.clear()
         self.four_first_targets.clear()
