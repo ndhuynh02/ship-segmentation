@@ -1,0 +1,9 @@
+_target_: src.models.unet3p_pytorch.unet3plus.UNet3Plus
+num_classes: 1
+skip_ch: 64
+aux_losses: 2
+encoder: resnet34
+pretrained: True
+transpose_final: False
+use_cgm: True
+fast_up: True
