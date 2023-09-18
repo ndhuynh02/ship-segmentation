@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 import torch
 
-from src.data.airbus_datamodule import AirbusDataModule
+from data.airbus.airbus_datamodule import AirbusDataModule
 
 
 @pytest.mark.parametrize("batch_size", [4, 8])

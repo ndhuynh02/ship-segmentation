@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from torchvision.ops import sigmoid_focal_loss
 
-from models.components.diceloss import DiceLoss
+from models.loss_function.diceloss import DiceLoss
 
 
 class MixedLoss(nn.Module):
