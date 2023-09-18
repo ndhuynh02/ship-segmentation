@@ -7,6 +7,8 @@ from torchmetrics import JaccardIndex, MaxMetric, MeanMetric
 
 from src.models.components.lossbinary import LossBinary
 from src.models.components.lovasz_loss import BCE_Lovasz
+from src.models.unet3p_pytorch.loss.u3ploss import build_u3p_loss
+from src.models.unet3p_pytorch.utils.logger import AverageMeter
 
 
 class UNetLitModule(LightningModule):
@@ -40,7 +42,7 @@ class UNetLitModule(LightningModule):
         self.net = net
 
         # loss function
-        self.criterion = criterion
+        self.criterion = build_u3p_loss(loss_type="u3p")
 
         # metric objects for calculating and averaging accuracy across batches
         self.train_metric = JaccardIndex(task="binary", num_classes=2)
@@ -51,12 +53,29 @@ class UNetLitModule(LightningModule):
         self.train_loss = MeanMetric()
         self.val_loss = MeanMetric()
         self.test_loss = MeanMetric()
+        self.loss_dict = dict()
+        self.val_loss_dict = dict()
 
         # for tracking best so far validation accuracy
         self.val_metric_best = MaxMetric()
+        self.val_score_dict = None
+        self.best_val_score_dict = None
 
     def forward(self, x: torch.Tensor):
         return self.net(x)
+
+    def update_loss_dict(self, loss_dict, batch_loss_dict=None):
+        if batch_loss_dict is None:
+            if loss_dict is None:
+                return
+            for k in loss_dict:
+                loss_dict[k].reset()
+        elif len(loss_dict) == 0:
+            for k, v in batch_loss_dict.items():
+                loss_dict[k] = AverageMeter(val=v)
+        else:
+            for k, v in batch_loss_dict.items():
+                loss_dict[k].update(v)
 
     def on_train_start(self):
         # by default lightning executes validation step sanity checks before training starts,
@@ -66,7 +85,7 @@ class UNetLitModule(LightningModule):
         self.val_metric_best.reset()
 
     def model_step(self, batch: Any):
-        x, y, id = batch[0], batch[1], batch[3]
+        x, y, _ = batch[0], batch[1], batch[3]
 
         if isinstance(self.criterion, (LossBinary, BCE_Lovasz)):
             cnt1 = (y == 1).sum().item()  # count number of class 1 in image
@@ -81,24 +100,22 @@ class UNetLitModule(LightningModule):
             self.criterion.update_pos_weight(pos_weight=BCE_pos_weight)
 
         preds = self.forward(x)
-        loss_dict = {}
-        for i, pred in enumerate(preds):
-            loss = self.criterion(pred, y)
-            loss_dict[f"loss_d{i + 1}"] = loss.item()
+        loss, batch_loss_dict = self.criterion(preds, y)
 
         # Code to try to fix CUDA out of memory issues
         del x
         gc.collect()
         torch.cuda.empty_cache()
 
-        return loss_dict, preds, y
+        return loss, batch_loss_dict, preds, y
 
     def training_step(self, batch: Any, batch_idx: int):
-        loss_dict, preds, targets = self.model_step(batch)
+        loss, batch_loss_dict, preds, targets = self.model_step(batch)
 
         # update and log metrics
-        self.train_loss(loss_dict["loss_d1"])
-        self.train_metric(preds[0], targets)
+        self.train_loss(loss)
+        self.train_metric(preds, targets)
+        self.update_loss_dict(self.loss_dict, batch_loss_dict)
 
         self.log(
             "train/loss", self.train_loss, on_step=False, on_epoch=True, prog_bar=True
@@ -114,21 +131,22 @@ class UNetLitModule(LightningModule):
         # we can return here dict with any tensors
         # and then read it in some callback or in `training_epoch_end()` below
         # remember to always return loss from `training_step()` or backpropagation will fail!
-        return {"loss": loss_dict}
+        return {"loss": loss}
 
     def validation_step(self, batch: Any, batch_idx: int):
-        loss_dict, preds, targets = self.model_step(batch)
+        loss, batch_loss_dict, preds, targets = self.model_step(batch)
 
         # update and log metrics
-        self.val_loss(loss_dict["loss_d1"])
-        self.val_metric(preds[0], targets)
+        self.val_loss(loss)
+        self.val_metric(preds, targets)
+        self.update_loss_dict(self.loss_dict, batch_loss_dict)
 
         self.log("val/loss", self.val_loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log(
             "val/jaccard", self.val_metric, on_step=False, on_epoch=True, prog_bar=True
         )
 
-        return {"loss": loss_dict, "preds": preds, "targets": targets}
+        return {"loss": loss, "preds": preds, "targets": targets}
 
     def validation_epoch_end(self, outputs: List[Any]):
         acc = self.val_metric.compute()  # get current val acc
@@ -138,11 +156,11 @@ class UNetLitModule(LightningModule):
         self.log("val/jaccard_best", self.val_metric_best.compute(), prog_bar=True)
 
     def test_step(self, batch: Any, batch_idx: int):
-        loss_dict, preds, targets = self.model_step(batch)
+        loss, batch_loss_dict, preds, targets = self.model_step(batch)
 
         # update and log metrics
-        self.test_loss(loss_dict["loss_d1"])
-        self.test_metric(preds[0], targets)
+        self.test_loss(loss)
+        self.test_metric(preds, targets)
 
         self.log(
             "test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True
@@ -155,11 +173,11 @@ class UNetLitModule(LightningModule):
             prog_bar=True,
         )
 
-        return {"loss": loss_dict, "preds": preds, "targets": targets}
+        return {"loss": loss, "preds": preds, "targets": targets}
 
-    def predict_step(self, batch: Any, batch_idx: int):
-        preds = self.forward(batch)
-        return preds[0]
+    # def predict_step(self, batch: Any, batch_idx: int):
+    #     preds = self.forward(batch)
+    #     return preds[0]
 
     def configure_optimizers(self):
         """Choose what optimizers and learning-rate schedulers to use in your optimization.
