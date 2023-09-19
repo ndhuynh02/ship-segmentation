@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from models.components.init_weights import init_weights
+from src.models.unet.components.init_weights import init_weights
 
 
 class unetConv2(nn.Module):
