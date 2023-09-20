@@ -107,6 +107,7 @@ class CaMAirbusDataset(Dataset):
         label[label == 255] = 1
         label_c[label_c == 255] = 1
         label_m[label_m == 255] = 1
+        label_new_c = label_c + label_m * 2
         weight = np.expand_dims(weight, 0)
 
         sample = {
@@ -116,6 +117,7 @@ class CaMAirbusDataset(Dataset):
             "label_m": label_m,
             "file_id": file_id,
             "weight": weight,
+            "label_new_c": label_new_c,
         }
 
         return sample

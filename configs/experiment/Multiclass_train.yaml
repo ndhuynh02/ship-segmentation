@@ -1,0 +1,37 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=Contour_train
+
+defaults:
+  - override /data: CaM_airbus.yaml
+  - override /model: MultiClassUnet.yaml
+  - override /callbacks: Multiclass.yaml
+  - override /trainer: gpu.yaml
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+
+tags: ["ship-segmentation", "MultiClassUnet", "train"]
+
+seed: 12345
+
+data:
+  undersample: -1 # number of non-ship images to remove, set to -1 to drop all non-ship images
+  subset: 15000 # set to 0 to use all data
+
+callbacks:
+  wandb_C_callback:
+    n_images_to_log: 10
+
+logger:
+  wandb:
+    tags: ${tags}
+    group: "ship-segmentation"
+
+model:
+  net:
+    fixed_encoder: false
+    ckpt_path: null
+
+ckpt_path: null

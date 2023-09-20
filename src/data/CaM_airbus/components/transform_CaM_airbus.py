@@ -19,14 +19,14 @@ class TransformCaMAirbus(Dataset):
 
         if transform is not None:
             self.transform = transform
-            self.transform.add_targets({"mask_0": "mask", "mask_1": "mask"})
+            self.transform.add_targets({"mask_0": "mask", "mask_1": "mask", "mask_2": "mask"})
         else:
             self.transform = Compose(
                 [
                     A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                     ToTensorV2(),
                 ],
-                additional_targets={"mask_0": "mask", "mask_1": "mask"},
+                additional_targets={"mask_0": "mask", "mask_1": "mask", "mask_2": "mask"},
             )
 
     def __len__(self):
@@ -47,12 +47,14 @@ class TransformCaMAirbus(Dataset):
                 mask=sample["label"],
                 mask_0=sample["label_c"],
                 mask_1=sample["label_m"],
+                mask_2=sample["label_new_c"],
             )
             # img_size set in hydra config
             x["image"] = transformed["image"]
             x["label"] = transformed["mask"].unsqueeze(0).float()
             x["label_c"] = transformed["mask_0"].unsqueeze(0).float()
             x["label_m"] = transformed["mask_1"].unsqueeze(0).float()
+            x["label_new_c"] = transformed["mask_2"].unsqueeze(0).float()
 
         return x
 

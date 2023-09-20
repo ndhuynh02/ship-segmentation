@@ -1,0 +1,4 @@
+_target_: src.models.MultiClassUnet.components.MultiClassUnet34.MultiClassUnet34
+ckpt_path: null
+arch: null
+fixed_encoder: false
