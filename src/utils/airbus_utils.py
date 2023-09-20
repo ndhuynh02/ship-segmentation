@@ -45,11 +45,15 @@ def multi_class_mask_overlay(image, mask):
     """Helper function to visualize mask on the top of the image."""
     # Define colors for each class
     colors = [(0, 1, 0), (1, 0, 0), (0, 0, 1)]  # RGB colors for classes 0, 1, 2
+    mask = mask.squeeze()
 
     img = image.copy()
     for i, color in enumerate(colors):
+        if i == 0:
+            continue
         curr_mask = mask == i
-        mask_colored = np.dstack((curr_mask, curr_mask, curr_mask)) * np.array(color)
+        color_reshaped = np.array(color).reshape((1, 1, 3))  # reshape color array
+        mask_colored = np.dstack((curr_mask, curr_mask, curr_mask)) * color_reshaped
         mask_colored = (mask_colored * 255).astype(np.uint8)
         weighted_sum = cv2.addWeighted(mask_colored, 0.5, img, 0.5, 0.0)
         img[curr_mask] = weighted_sum[curr_mask]

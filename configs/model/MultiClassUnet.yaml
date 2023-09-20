@@ -1,4 +1,4 @@
-_target_: src.models.MulticlassUnet.MulticlassUnet_module.MulticlassUnetLitModule
+_target_: src.models.MultiClassUnet.MultiClassUnet_module.MultiClassUnetLitModule
 defaults:
   - criterion: lovasz_softmax_loss.yaml
   - net: MultiClassUnet34.yaml

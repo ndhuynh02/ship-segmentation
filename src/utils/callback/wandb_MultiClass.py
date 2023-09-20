@@ -39,7 +39,7 @@ class Callback(Callback):
             # B, 3, H, W
             return torch.clamp(ten, 0, 1).permute(3, 0, 1, 2)
 
-        preds_new_c = np.squeeze(torch.sigmoid(outputs["outputs_new_c"]).cpu().numpy(), axis=1)
+        preds_new_c = torch.argmax(outputs["outputs_new_c"], axis=1).cpu().numpy()
         file_ids = outputs["file_id"]
         labels_new_c = outputs["labels_new_c"]
 
@@ -51,7 +51,7 @@ class Callback(Callback):
                 break
 
             img = (img.permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
-            pred = torch.argmax(pred, dim=1).cpu().numpy()
+            # pred = pred.cpu().numpy()
             pred = pred.astype(np.uint8)
             target = target.cpu().numpy().astype(np.uint8)
 

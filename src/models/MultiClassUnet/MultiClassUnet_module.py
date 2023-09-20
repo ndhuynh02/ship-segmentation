@@ -88,7 +88,8 @@ class MultiClassUnetLitModule(LightningModule):
 
         # update and log metrics
         self.train_loss(loss)
-        self.train_metric(outputs_new_c, labels_new_c)
+        outputs_class = torch.argmax(outputs_new_c, dim=1, keepdim=True)
+        self.train_metric(outputs_class, labels_new_c)
 
         self.log("train/loss", self.train_loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log("train/metric", self.train_metric, on_step=False, on_epoch=True, prog_bar=True)
@@ -103,7 +104,8 @@ class MultiClassUnetLitModule(LightningModule):
 
         # update and log metrics
         self.val_loss(loss)
-        self.val_metric(outputs_new_c, labels_new_c)
+        outputs_class = torch.argmax(outputs_new_c, dim=1, keepdim=True)
+        self.val_metric(outputs_class, labels_new_c)
 
         self.log("val/loss", self.val_loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log("val/metric", self.val_metric, on_step=False, on_epoch=True, prog_bar=True)
@@ -128,7 +130,8 @@ class MultiClassUnetLitModule(LightningModule):
 
         # update and log metrics
         self.test_loss(loss)
-        self.test_metric(outputs_new_c, labels_new_c)
+        outputs_class = torch.argmax(outputs_new_c, dim=1, keepdim=True)
+        self.test_metric(outputs_class, labels_new_c)
 
         self.log("test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log("test/metric", self.test_metric, on_step=False, on_epoch=True, prog_bar=True)

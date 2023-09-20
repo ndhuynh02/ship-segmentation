@@ -1,7 +1,7 @@
 # @package _global_
 
 # to execute this experiment run:
-# python train.py experiment=Contour_train
+# python train.py experiment=Multiclass_train
 
 defaults:
   - override /data: CaM_airbus.yaml
