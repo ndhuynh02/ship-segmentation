@@ -51,9 +51,7 @@ class unetUp(nn.Module):
         super().__init__()
         self.conv = unetConv2(out_size * 2, out_size, False)
         if is_deconv:
-            self.up = nn.ConvTranspose2d(
-                in_size, out_size, kernel_size=4, stride=2, padding=1
-            )
+            self.up = nn.ConvTranspose2d(in_size, out_size, kernel_size=4, stride=2, padding=1)
         else:
             self.up = nn.UpsamplingBilinear2d(scale_factor=2)
 
@@ -75,9 +73,7 @@ class unetUp_origin(nn.Module):
         super().__init__()
         if is_deconv:
             self.conv = unetConv2(in_size + (n_concat - 2) * out_size, out_size, False)
-            self.up = nn.ConvTranspose2d(
-                in_size, out_size, kernel_size=4, stride=2, padding=1
-            )
+            self.up = nn.ConvTranspose2d(in_size, out_size, kernel_size=4, stride=2, padding=1)
         else:
             self.conv = unetConv2(in_size + (n_concat - 2) * out_size, out_size, False)
             self.up = nn.UpsamplingBilinear2d(scale_factor=2)
