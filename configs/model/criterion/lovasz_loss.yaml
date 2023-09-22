@@ -1,3 +1,1 @@
 _target_: src.models.loss_function.lovasz_loss.LovaszLoss
-
-per_image: False
