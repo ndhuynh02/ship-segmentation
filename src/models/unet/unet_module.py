@@ -3,10 +3,10 @@ from typing import Any, List
 
 import torch
 from pytorch_lightning import LightningModule
-from torchmetrics import JaccardIndex, MaxMetric, MeanMetric
+from torchmetrics import Dice, JaccardIndex, MaxMetric, MeanMetric
 
-from src.models.components.lossbinary import LossBinary
-from src.models.components.lovasz_loss import BCE_Lovasz
+from src.models.loss_function.lossbinary import LossBinary
+from src.models.loss_function.lovasz_loss import BCE_Lovasz
 
 
 class UNetLitModule(LightningModule):
@@ -43,9 +43,13 @@ class UNetLitModule(LightningModule):
         self.criterion = criterion
 
         # metric objects for calculating and averaging accuracy across batches
-        self.train_metric = JaccardIndex(task="binary", num_classes=2)
-        self.val_metric = JaccardIndex(task="binary", num_classes=2)
-        self.test_metric = JaccardIndex(task="binary", num_classes=2)
+        self.train_metric_1 = JaccardIndex(task="binary", num_classes=2)
+        self.val_metric_1 = JaccardIndex(task="binary", num_classes=2)
+        self.test_metric_1 = JaccardIndex(task="binary", num_classes=2)
+
+        self.train_metric_2 = Dice()
+        self.val_metric_2 = Dice()
+        self.test_metric_2 = Dice()
 
         # for averaging loss across batches
         self.train_loss = MeanMetric()
@@ -53,7 +57,8 @@ class UNetLitModule(LightningModule):
         self.test_loss = MeanMetric()
 
         # for tracking best so far validation accuracy
-        self.val_metric_best = MaxMetric()
+        self.val_metric_best_1 = MaxMetric()
+        self.val_metric_best_2 = MaxMetric()
 
     def forward(self, x: torch.Tensor):
         return self.net(x)
@@ -62,8 +67,10 @@ class UNetLitModule(LightningModule):
         # by default lightning executes validation step sanity checks before training starts,
         # so it's worth to make sure validation metrics don't store results from these checks
         self.val_loss.reset()
-        self.val_metric.reset()
-        self.val_metric_best.reset()
+        self.val_metric_1.reset()
+        self.val_metric_2.reset()
+        self.val_metric_best_1.reset()
+        self.val_metric_best_2.reset()
 
     def model_step(self, batch: Any):
         x, y, id = batch[0], batch[1], batch[3]
@@ -93,10 +100,12 @@ class UNetLitModule(LightningModule):
 
         # update and log metrics
         self.train_loss(loss)
-        self.train_metric(preds, targets)
+        self.train_metric_1(preds, targets)
+        self.train_metric_2(preds, targets.int())
 
         self.log("train/loss", self.train_loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("train/jaccard", self.train_metric, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("train/jaccard", self.train_metric_1, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("train/dice", self.train_metric_2, on_step=False, on_epoch=True, prog_bar=True)
 
         # we can return here dict with any tensors
         # and then read it in some callback or in `training_epoch_end()` below
@@ -108,29 +117,51 @@ class UNetLitModule(LightningModule):
 
         # update and log metrics
         self.val_loss(loss)
-        self.val_metric(preds, targets)
+        self.val_metric_1(preds, targets)
+        self.val_metric_2(preds, targets.int())
 
         self.log("val/loss", self.val_loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("val/jaccard", self.val_metric, on_step=False, on_epoch=True, prog_bar=True)
+        self.log(
+            "val/jaccard",
+            self.val_metric_1,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True,
+        )
+        self.log(
+            "val/dice",
+            self.val_metric_2,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=True,
+        )
 
         return {"loss": loss, "preds": preds, "targets": targets}
 
     def validation_epoch_end(self, outputs: List[Any]):
-        acc = self.val_metric.compute()  # get current val acc
-        self.val_metric_best(acc)  # update best so far val acc
+        # get current val acc
+        acc1 = self.val_metric_1.compute()
+        acc2 = self.val_metric_2.compute()
+        # update best so far val acc
+        self.val_metric_best_1(acc1)
+        self.val_metric_best_2(acc2)
         # log `val_acc_best` as a value through `.compute()` method, instead of as a metric object
         # otherwise metric would be reset by lightning after each epoch
-        self.log("val/jaccard_best", self.val_metric_best.compute(), prog_bar=True)
+        self.log("val/jaccard_best", self.val_metric_best_1.compute(), prog_bar=True)
+        self.log("val/dice_best", self.val_metric_best_2.compute(), prog_bar=True)
 
     def test_step(self, batch: Any, batch_idx: int):
         loss, preds, targets = self.model_step(batch)
 
         # update and log metrics
+        # update and log metrics
         self.test_loss(loss)
-        self.test_metric(preds, targets)
+        self.test_metric_1(preds, targets)
+        self.test_metric_2(preds, targets.int())
 
         self.log("test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("test/jaccard", self.test_metric, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("test/jaccard", self.test_metric_1, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("test/dice", self.test_metric_2, on_step=False, on_epoch=True, prog_bar=True)
 
         return {"loss": loss, "preds": preds, "targets": targets}
 

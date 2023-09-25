@@ -1,0 +1,32 @@
+# @package _global_
+
+# to execute this experiment run:
+# python eval.py experiment=combined-eval
+
+defaults:
+  - override /data: airbus.yaml
+  - override /model: combined.yaml
+  - override /callbacks: combined.yaml
+  - override /trainer: gpu.yaml
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+
+tags: ["ship-segmentation", "unet", "eval"]
+
+seed: 12345
+
+data:
+  undersample: 0 # number of non-ship images to remove, set to -1 to drop all non-ship images
+  subset: 0 # set to 0 to use all data
+
+callbacks:
+  wandb_combined_callback:
+    n_images_to_log: 100
+
+logger:
+  wandb:
+    tags: ${tags}
+    group: "ship-segmentation"
+
+ckpt_path: null

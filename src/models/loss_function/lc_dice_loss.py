@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from models.components.diceloss import DiceLoss
+from models.loss_function.diceloss import DiceLoss
 
 
 class LogCoshDiceLoss(nn.Module):
