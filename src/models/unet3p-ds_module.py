@@ -5,8 +5,8 @@ import torch
 from pytorch_lightning import LightningModule
 from torchmetrics import JaccardIndex, MaxMetric, MeanMetric
 
-from src.models.components.lossbinary import LossBinary
-from src.models.components.lovasz_loss import BCE_Lovasz
+from src.models.loss_function.lovasz_loss import BCE_Lovasz
+from src.models.loss_function.lossbinary import LossBinary
 
 
 class UNetLitModule(LightningModule):
@@ -72,7 +72,9 @@ class UNetLitModule(LightningModule):
             cnt1 = (y == 1).sum().item()  # count number of class 1 in image
             cnt0 = y.numel() - cnt1
             if cnt1 != 0:
-                BCE_pos_weight = torch.FloatTensor([1.0 * cnt0 / cnt1]).to(device=self.device)
+                BCE_pos_weight = torch.FloatTensor([1.0 * cnt0 / cnt1]).to(
+                    device=self.device
+                )
             else:
                 BCE_pos_weight = torch.FloatTensor([1.0]).to(device=self.device)
 
@@ -96,7 +98,9 @@ class UNetLitModule(LightningModule):
         self.train_loss(loss)
         self.train_metric(preds[0], targets)
 
-        self.log("train/loss", self.train_loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.log(
+            "train/loss", self.train_loss, on_step=False, on_epoch=True, prog_bar=True
+        )
         self.log(
             "train/jaccard",
             self.train_metric,
@@ -118,7 +122,9 @@ class UNetLitModule(LightningModule):
         self.val_metric(preds[0], targets)
 
         self.log("val/loss", self.val_loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("val/jaccard", self.val_metric, on_step=False, on_epoch=True, prog_bar=True)
+        self.log(
+            "val/jaccard", self.val_metric, on_step=False, on_epoch=True, prog_bar=True
+        )
 
         return {"loss": loss, "preds": preds, "targets": targets}
 
@@ -136,7 +142,9 @@ class UNetLitModule(LightningModule):
         self.test_loss(loss)
         self.test_metric(preds[0], targets)
 
-        self.log("test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.log(
+            "test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True
+        )
         self.log(
             "test/jaccard",
             self.test_metric,
