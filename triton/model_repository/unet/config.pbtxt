@@ -1,0 +1,27 @@
+name: "unet"
+platform: "pytorch_libtorch"
+max_batch_size : 8 
+input [
+  {
+    name: "input__0"
+    data_type: TYPE_FP32
+    dims: [ 3, 768, 768 ]
+  }
+]
+output [
+  {
+    name: "output__0"
+    data_type: TYPE_FP32
+    dims: [ 3, 768, 768 ]
+
+  }
+]
+instance_group [
+  {
+    count: 2
+    kind: KIND_GPU
+  }
+] 
+
+
+dynamic_batching { }
