@@ -44,9 +44,9 @@ app.post('/segment', upload.single('image'), async (req, res) => {
 // Function to process the uploaded image using BentoML API
 async function processImage(imageBuffer) {
   try {
-    // host.docker.internal:3000 if using docker
-    // localhost:3000 otherwise
-    const apiEndpoint = 'http://localhost:4000/segment'; // Replace with your BentoML API endpoint
+    // host.docker.internal:port if using docker
+    // localhost:port otherwise
+    const apiEndpoint = 'http://host.docker.internal:4000/segment'; // Replace with your BentoML API endpoint
     const formData = new FormData();
     formData.append('image', Buffer.from(imageBuffer), { filename: 'image.jpg' });
 

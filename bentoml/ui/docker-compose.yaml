@@ -1,14 +1,14 @@
 version: "3.8"
 services:
   bentoml_api:
-    image: airbus-segmentation:eqsujscro6yfmbbt 
+    image: airbus-segmentation:eqsujscro6yfmbbt
     container_name: airbus-api
     environment:
       - BENTOML_PORT=4000
     ports:
       - 4000:4000
     extra_hosts:
-     - "host.docker.internal:host-gateway" 
+      - "host.docker.internal:host-gateway"
   nodejs_ui:
     build: .
     image: airbus-nodejs
@@ -16,5 +16,4 @@ services:
     ports:
       - 4001:4001
     extra_hosts:
-     - "host.docker.internal:host-gateway" 
-      
+      - "host.docker.internal:host-gateway"
