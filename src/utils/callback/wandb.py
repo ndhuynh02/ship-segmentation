@@ -19,7 +19,6 @@ from src.utils.airbus_utils import mask_overlay, masks_as_image
 class WandbCallback(Callback):
     def __init__(
         self,
-        image_id: str = "003b48a9e.jpg",
         data_path: str = "data/airbus",
         n_images_to_log: int = 5,
         img_size: int = 384,
@@ -32,19 +31,10 @@ class WandbCallback(Callback):
         self.num_samples = 8
         self.img_size = img_size
 
-        image_path = os.path.join(data_path, "train_v2")
-        image_path = os.path.join(image_path, image_id)
-
-        self.sample_image = np.array(Image.open(image_path).convert("RGB"))
-        self.sample_image_height, self.sample_image_width = (
-            self.sample_image.shape[0],
-            self.sample_image.shape[1],
-        )
+        self.sample_image_height, self.sample_image_width = (768, 768)
         self.dataframe = pd.read_csv(os.path.join(data_path, "train_ship_segmentations_v2.csv"))
-        self.sample_mask = self.dataframe[self.dataframe["ImageId"] == image_id]["EncodedPixels"]
         self.good_dataframe = pd.read_csv(os.path.join("data_csv", "good_images.csv"))
         self.bad_dataframe = pd.read_csv(os.path.join("data_csv", "bad_images.csv"))
-        self.sample_mask = masks_as_image(self.sample_mask)
 
         self.transform = Compose(
             [
@@ -52,13 +42,6 @@ class WandbCallback(Callback):
                 A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                 ToTensorV2(),
             ]
-        )
-
-    def on_train_start(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"):
-        wandb_logger = trainer.logger
-        wandb_logger.log_image(
-            key="real mask",
-            images=[Image.fromarray(mask_overlay(self.sample_image, self.sample_mask))],
         )
 
     def on_train_epoch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"):
