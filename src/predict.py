@@ -32,7 +32,7 @@ log = utils.get_pylogger(__name__)
 
 
 @utils.task_wrapper
-def evaluate(cfg: DictConfig) -> Tuple[dict, dict]:
+def predict(cfg: DictConfig) -> Tuple[dict, dict]:
     """Evaluates given checkpoint on a datamodule testset.
 
     This method is wrapped in optional @task_wrapper decorator which applies extra utilities
@@ -75,22 +75,22 @@ def evaluate(cfg: DictConfig) -> Tuple[dict, dict]:
         log.info("Logging hyperparameters!")
         utils.log_hyperparameters(object_dict)
 
-    log.info("Starting testing!")
-    if isinstance(model, CombinedLitModule):
-        trainer.test(model=model, datamodule=datamodule)
-    else:
-        trainer.test(model=model, datamodule=datamodule, ckpt_path=cfg.ckpt_path)
+    log.info("Starting predicting!")
+    # if isinstance(model, CombinedLitModule):
+    #     trainer.test(model=model, datamodule=datamodule)
+    # else:
+    #     trainer.test(model=model, datamodule=datamodule, ckpt_path=cfg.ckpt_path)
     # for predictions use trainer.predict(...)
-    # predictions = trainer.predict(model=model, dataloaders=dataloaders, ckpt_path=cfg.ckpt_path)
+    trainer.predict(model=model, datamodule=datamodule, ckpt_path=cfg.ckpt_path)
 
     metric_dict = trainer.callback_metrics
 
     return metric_dict, object_dict
 
 
-@hydra.main(version_base="1.3", config_path="../configs", config_name="eval.yaml")
+@hydra.main(version_base="1.3", config_path="../configs", config_name="predict.yaml")
 def main(cfg: DictConfig) -> None:
-    evaluate(cfg)
+    predict(cfg)
 
 
 if __name__ == "__main__":

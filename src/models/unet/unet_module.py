@@ -46,6 +46,7 @@ class UNetLitModule(LightningModule):
         self.train_metric_1 = JaccardIndex(task="binary", num_classes=2)
         self.val_metric_1 = JaccardIndex(task="binary", num_classes=2)
         self.test_metric_1 = JaccardIndex(task="binary", num_classes=2)
+        self.predict_metric_1 = JaccardIndex(task="binary", num_classes=2)
 
         self.train_metric_2 = Dice()
         self.val_metric_2 = Dice()
@@ -164,6 +165,12 @@ class UNetLitModule(LightningModule):
         self.log("test/dice", self.test_metric_2, on_step=False, on_epoch=True, prog_bar=True)
 
         return {"loss": loss, "preds": preds, "targets": targets}
+
+    def predict_step(self, batch: Any, batch_idx: int, dataloader_idx: int = None):
+        imgs, img_ids = batch[0], batch[1]
+        preds = self.forward(imgs)
+
+        return {"preds": preds, "img_ids": img_ids}
 
     def configure_optimizers(self):
         """Choose what optimizers and learning-rate schedulers to use in your optimization.

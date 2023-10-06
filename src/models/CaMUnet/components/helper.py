@@ -202,39 +202,40 @@ def partition_instances(raw_bodies, raw_markers=None, raw_edges=None):
         threshold = 0.5
         size_scale = 1
         ratio = 1
-        size_index = mean_blob_size(bodies, ratio)
+        # size_index = mean_blob_size(bodies, ratio)
 
         """
         Add noise to fix min_distance bug:
         If multiple peaks in the specified region have identical intensities,
         the coordinates of all such pixels are returned.
         """
-        noise = np.random.randn(bodies.shape[0], bodies.shape[1]) * 0.1
-        distance = ndi.distance_transform_edt(bodies) + noise
-        # 2*min_distance+1 is the minimum distance between two peaks.
-        local_maxi = peak_local_max(
-            distance,
-            min_distance=(size_index * size_scale),
-            exclude_border=False,
-            indices=False,
-            labels=bodies,
-        )
-        markers = label(local_maxi)
+        # noise = np.random.randn(bodies.shape[0], bodies.shape[1]) * 0.1
+        # distance = ndi.distance_transform_edt(bodies) + noise
+        # # 2*min_distance+1 is the minimum distance between two peaks.
+        # local_maxi = peak_local_max(
+        #     distance,
+        #     min_distance=(size_index * size_scale),
+        #     exclude_border=False,
+        #     indices=False,
+        #     labels=bodies,
+        # )
+        markers = label(bodies)
 
-    if policy == "ws":
-        seg_labels = watershed(-ndi.distance_transform_edt(bodies), markers, mask=bodies)
-    elif policy == "rw":
-        markers[bodies == 0] = -1
-        if np.sum(markers > 0) > 0:
-            seg_labels = random_walker(bodies, markers)
-        else:
-            seg_labels = np.zeros_like(markers, dtype=np.int32)
-        seg_labels[seg_labels <= 0] = 0
-        markers[markers <= 0] = 0
-    else:
-        raise NotImplementedError("Policy not implemented")
-    final_labels = add_missed_blobs(bodies, seg_labels, edges)
-    return final_labels, markers
+    # if policy == "ws":
+    #     seg_labels = watershed(-ndi.distance_transform_edt(bodies), markers, mask=bodies)
+    # elif policy == "rw":
+    #     markers[bodies == 0] = -1
+    #     if np.sum(markers > 0) > 0:
+    #         seg_labels = random_walker(bodies, markers)
+    #     else:
+    #         seg_labels = np.zeros_like(markers, dtype=np.int32)
+    #     seg_labels[seg_labels <= 0] = 0
+    #     markers[markers <= 0] = 0
+    # else:
+    #     raise NotImplementedError("Policy not implemented")
+    # final_labels = add_missed_blobs(bodies, seg_labels, edges)
+    # return final_labels, markers
+    return markers, markers
 
 
 def rle_encoding(y):
@@ -249,7 +250,7 @@ def rle_encoding(y):
     return run_lengths
 
 
-def prob_to_rles(y, y_c, y_m):
+def prob_to_rles(y, y_c=None, y_m=None):
     # segmentation = config['post'].getboolean('segmentation')
     # remove_objects = config['post'].getboolean('remove_objects')
     # min_object_size = config['post'].getint('min_object_size')

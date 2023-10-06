@@ -7,6 +7,7 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, Dataset, Subset, random_split
 
 from data.airbus.components.airbus import AirbusDataset
+from data.airbus.components.airbus_test import AirbusTestDataset
 from data.airbus.components.transform_airbus import TransformAirbus
 from src.utils.airbus_utils import imshow_batch
 
@@ -60,6 +61,7 @@ class AirbusDataModule(LightningDataModule):
         self.data_train: Optional[Dataset] = None
         self.data_val: Optional[Dataset] = None
         self.data_test: Optional[Dataset] = None
+        self.data_predict: Optional[Dataset] = None
 
     def setup(self, visualize_dist=False, stage: Optional[str] = None):
         """Load data. Set variables: `self.data_train`, `self.data_val`, `self.data_test`.
@@ -124,6 +126,8 @@ class AirbusDataModule(LightningDataModule):
             self.data_val = TransformAirbus(self.data_val, self.hparams.transform_val)
             self.data_test = TransformAirbus(self.data_test, self.hparams.transform_val)
 
+        self.data_predict = AirbusTestDataset(data_dir=self.hparams.data_dir)
+
     # visualize distribution of train, val & test
     def visualize_dist(self, masks, train_ids, val_ids, test_ids):
         import matplotlib.pyplot as plt
@@ -186,6 +190,15 @@ class AirbusDataModule(LightningDataModule):
     def test_dataloader(self):
         return DataLoader(
             dataset=self.data_test,
+            batch_size=self.hparams.batch_size,
+            num_workers=self.hparams.num_workers,
+            pin_memory=self.hparams.pin_memory,
+            shuffle=False,
+        )
+
+    def predict_dataloader(self):
+        return DataLoader(
+            dataset=self.data_predict,
             batch_size=self.hparams.batch_size,
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,

@@ -1,0 +1,20 @@
+# @package _global_
+
+defaults:
+  - _self_
+  - data: airbus.yaml # choose datamodule with `test_dataloader()` for evaluation
+  - model: unet.yaml
+  - callbacks: airbus.yaml
+  - logger: wandb
+  - trainer: gpu.yaml
+  - paths: default.yaml
+  - extras: default.yaml
+  - hydra: default.yaml
+  - experiment: null
+
+task_name: "predict"
+
+tags: ["dev"]
+
+# passing checkpoint path is necessary for evaluation
+ckpt_path: "outputs/encoder.ckpt"
