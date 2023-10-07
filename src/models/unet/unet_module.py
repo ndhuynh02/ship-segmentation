@@ -5,8 +5,8 @@ import torch
 from pytorch_lightning import LightningModule
 from torchmetrics import Dice, JaccardIndex, MaxMetric, MeanMetric
 
-from src.models.loss_function.lossbinary import LossBinary
-from src.models.loss_function.lovasz_loss import BCE_Lovasz
+from models.loss_function.lossbinary import LossBinary
+from models.loss_function.lovasz_loss import BCE_Lovasz
 
 
 class UNetLitModule(LightningModule):

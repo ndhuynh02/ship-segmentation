@@ -12,7 +12,6 @@ from PIL import Image, ImageFile
 from torch.utils.data import Dataset
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
-from src.utils.airbus_utils import imshow, masks_as_image
 
 
 class AirbusTestDataset(Dataset):

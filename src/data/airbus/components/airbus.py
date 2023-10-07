@@ -19,7 +19,7 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
-from src.utils.airbus_utils import imshow, masks_as_image
+from utils.airbus_utils import imshow, masks_as_image
 
 
 class AirbusDataset(Dataset):

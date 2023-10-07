@@ -1,4 +1,4 @@
-_target_: src.models.unet.unet_module.UNetLitModule
+_target_: models.unet.unet_module.UNetLitModule
 defaults:
   - criterion: lovasz_loss.yaml
   - net: UNet34.yaml
