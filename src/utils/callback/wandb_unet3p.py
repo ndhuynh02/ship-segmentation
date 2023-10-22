@@ -73,7 +73,7 @@ class WandbCallback(Callback):
         pred_mask = trainer.model(image)[0]
         pred_mask = pred_mask.detach()  # (1, 1, img_size, img_size)
         # print(pred_mask.shape)
-        pred_mask = torch.sigmoid(pred_mask)
+        # pred_mask = torch.sigmoid(pred_mask)
         pred_mask = pred_mask >= 0.5
         pred_mask = pred_mask.squeeze(0)
         pred_mask = pred_mask.permute(1, 2, 0)
@@ -215,7 +215,7 @@ class WandbCallback(Callback):
                 break
 
             img = (img.permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
-            pred = torch.sigmoid(pred)
+            # pred = torch.sigmoid(pred)
             pred = pred >= 0.5
             pred = pred.cpu().numpy().astype(np.uint8)
             target = target.cpu().numpy().astype(np.uint8)

@@ -14,7 +14,7 @@ defaults:
 
 tags: ["ship-segmentation", "unet3p", "train"]
 
-seed: 12345
+seed: 42
 
 # need to override transform_train and transform_val by hand in the config files
 

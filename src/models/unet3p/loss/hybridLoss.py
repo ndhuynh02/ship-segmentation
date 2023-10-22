@@ -1,8 +1,9 @@
 import torch
 import torch.nn as nn
 
+from src.models.unet3p.loss.focalLoss import FocalLoss
 from src.models.unet3p.loss.iouLoss import IOU
-from src.models.unet3p.loss.msssimLoss import MSSSIM
+from src.models.unet3p.loss.msssim_loss import MSSSIM_Loss
 
 
 class HybridLoss(nn.Module):
@@ -10,18 +11,18 @@ class HybridLoss(nn.Module):
         super().__init__()
 
         # Instantiate the individual loss functions
-        self.bce_loss = nn.BCELoss(size_average=True)
+        self.focal_loss = FocalLoss()
         self.iou_loss = IOU(size_average=True)
-        self.msssim_loss = MSSSIM(window_size=11, size_average=True, channel=1)
+        self.msssim_loss = MSSSIM_Loss()
 
     def forward(self, input, target):
         # Compute the individual loss values
-        bce_value = self.bce_loss(input, target)
+        focal_value = self.focal_loss(input, target)
         iou_value = self.iou_loss(input, target)
         msssim_value = self.msssim_loss(input, target)
 
         # Combine the losses
-        hybrid_loss = bce_value + iou_value + msssim_value
+        hybrid_loss = focal_value + iou_value + msssim_value
 
         return hybrid_loss
 
