@@ -1,11 +1,11 @@
 import torch
-from torch import nn
 import torch.nn.functional as F
+from torch import nn
+
 
 class FocalLoss(nn.Module):
-    """
-    Focal Loss without sigmoid function.
-    """
+    """Focal Loss without sigmoid function."""
+
     def __init__(self, alpha: float = 0.25, gamma: float = 2, reduction: str = "mean"):
         """
         Args:
@@ -54,6 +54,7 @@ class FocalLoss(nn.Module):
                 f"Invalid Value for arg 'reduction': '{self.reduction} \n Supported reduction modes: 'none', 'mean', 'sum'"
             )
         return loss
+
 
 if __name__ == "__main__":
     loss_func = FocalLoss()
