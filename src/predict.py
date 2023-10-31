@@ -79,7 +79,7 @@ def predict(cfg: DictConfig) -> Tuple[dict, dict]:
     # else:
     #     trainer.test(model=model, datamodule=datamodule, ckpt_path=cfg.ckpt_path)
     # for predictions use trainer.predict(...)
-    trainer.predict(model=model, datamodule=datamodule, ckpt_path=cfg.ckpt_path)
+    trainer.test(model=model, datamodule=datamodule, ckpt_path=cfg.ckpt_path)
 
     metric_dict = trainer.callback_metrics
 
