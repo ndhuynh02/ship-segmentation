@@ -41,7 +41,7 @@ def mask_overlay(image, mask, color=(0, 1, 0)):
 
 
 def imshow(img, mask, title=None):
-    fig = plt.figure(figsize=(6, 6))
+    plt.figure(figsize=(6, 6))
     plt.imshow(mask_overlay(img, mask))
     if title is not None:
         plt.title(title)

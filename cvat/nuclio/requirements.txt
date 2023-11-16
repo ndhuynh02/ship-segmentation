@@ -1,0 +1,8 @@
+tritonclient
+geventhttpclient
+
+numpy
+opencv-python
+albumentations
+
+omegaconf

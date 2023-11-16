@@ -1,0 +1,52 @@
+metadata:
+  name: ship-segment-unet
+  namespace: cvat
+  annotations:
+    name: UNet ship
+    type: detector
+    framework: pytorch
+    spec: |
+      [
+        { "id": 1, "name": "ship" }
+      ]
+
+spec:
+  description: |
+    Segment ship from satellite images using UNet implimented using Hydra Lighting Template
+
+  runtime: 'python:3.9'
+  handler: main:handler
+  eventTimeout: 30s
+  build:
+    image: cvat.pth.ndhuynh02.ship.segment
+    baseImage: pytorch/pytorch:1.12.1-cuda11.3-cudnn8-devel
+    directives:
+      preCopy:
+      # set workdir
+        - kind: WORKDIR
+          value: /opt/nuclio
+      # install basic dependancies
+        - kind: RUN
+          value: apt-get update && apt-get upgrade -y && apt-get install ffmpeg libsm6 libxext6 -y && pip install --upgrade pip
+      # map pip3 and python3 to pip and python
+        - kind: RUN
+          value: ln -s /usr/bin/pip3 /usr/local/bin/pip && ln -s /usr/bin/python3 /usr/bin/python
+      postCopy:
+      # install required packages
+        - kind: RUN
+          value: pip install -r requirements.txt
+
+  triggers:
+    myHttpTrigger:
+      maxWorkers: 2
+      kind: 'http'
+      workerAvailabilityTimeoutMilliseconds: 10000
+      attributes:
+        maxRequestBodySize: 33554432 # 32MB
+
+  platform:
+    attributes:
+      restartPolicy:
+        name: always
+        maximumRetryCount: 3
+      mountMode: volume
