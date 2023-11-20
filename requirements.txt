@@ -4,7 +4,7 @@ clearml-serving==1.3.0
 pandas==2.0.2
 torch==1.13.1
 torchvision==0.14.1
-matplotlib==3.7.1
+matplotlib==3.8.2
 sklearn==0.0.post5
 scikit-image==0.21.0
 tqdm==4.65.0
