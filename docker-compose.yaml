@@ -2,13 +2,13 @@ version: "3.8"
 services:
   api:
     build: .
-    image: ship-test-image # image name
-    container_name: ship-test-name # container name
+    image: ship-hayade # image name
+    container_name: ship-hayade # container name
     volumes:
       - airbus_data:/workspace/data
     ports:
       - 8080:8080
-    shm_size: "2gb" # set the shared memory size to 2GB
+    # shm_size: "2.5gb" # set the shared memory size to 2GB
     ulimits:
       memlock: # unlimited
         soft: -1

@@ -33,18 +33,24 @@ class Resnet(torch.nn.Module):
 
 
 class UNet_Up_Block(torch.nn.Module):
-    def __init__(self, up_in, x_in, n_out):
+    def __init__(self, up_in, x_in):   
+        """
+            up_in: decoder output channel
+            x_in: encoder output channel
+            up_in = 2*x_in
+        """
         super().__init__()
-        up_out = x_out = n_out // 2
-        self.x_conv = torch.nn.Conv2d(x_in, x_out, 1)
-        self.tr_conv = torch.nn.ConvTranspose2d(up_in, up_out, 2, stride=2)
-        self.bn = torch.nn.BatchNorm2d(n_out)
+        self.tr_conv = torch.nn.ConvTranspose2d(up_in, x_in, 2, stride=2)
+        self.u_conv = torch.nn.Conv2d(2*x_in, x_in, kernel_size=3, padding=1, stride=1)
+        self.bn = torch.nn.BatchNorm2d(x_in)
 
     def forward(self, up_p, x_p):
-        up_p = self.tr_conv(up_p)
-        x_p = self.x_conv(x_p)
-        cat_p = torch.cat([up_p, x_p], dim=1)
-        return self.bn(F.relu(cat_p))
+        up_p = self.tr_conv(up_p)               # x_in
+        cat_p = torch.cat([up_p, x_p], dim=1)   # 2*x_in
+
+        out = self.u_conv(cat_p)                # x_in
+        
+        return F.relu(self.bn(out))             # x_in
 
 
 class Unet34(torch.nn.Module):
@@ -84,11 +90,11 @@ class Unet34(torch.nn.Module):
                 print("arch input is not valid. Using torchvision.models ResNet34 as default.")
 
         self.sfs = Resnet(self.rn)
-        self.up1 = UNet_Up_Block(512, 256, 256)
-        self.up2 = UNet_Up_Block(256, 128, 256)
-        self.up3 = UNet_Up_Block(256, 64, 256)
-        self.up4 = UNet_Up_Block(256, 64, 256)
-        self.up5 = torch.nn.ConvTranspose2d(256, 1, 2, stride=2)
+        self.up1 = UNet_Up_Block(512, 256)
+        self.up2 = UNet_Up_Block(256, 128)
+        self.up3 = UNet_Up_Block(128, 64)
+        self.up4 = UNet_Up_Block(64, 64)
+        self.up5 = torch.nn.ConvTranspose2d(64, 1, 2, stride=2)
 
     def forward(self, x):
         encoder_output = self.sfs(x)
@@ -102,10 +108,10 @@ class Unet34(torch.nn.Module):
 
 
 if __name__ == "__main__":
-    x = torch.rand((1, 3, 256, 256))
+    x = torch.rand((1, 3, 768, 768))
     model = Unet34()
     print(model(x).shape)
-    print(model(x).min())  # 'torch.Size([1, 1, 256, 256])
-    print(model(x).max())
+    # print(model(x).min())  # 'torch.Size([1, 1, 256, 256])
+    # print(model(x).max())
 
-    model = torch.jit.script(model)
+    # model = torch.jit.script(model)

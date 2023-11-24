@@ -9,5 +9,5 @@ batch_size: 4
 train_val_test_split: [0.8, 0.1, 0.1]
 num_workers: 2
 pin_memory: False
-undersample: 140000 # number of non-ship images to remove, set to -1 to drop all non-ship images
-subset: 10000 # set to 0 to use all data
+undersample: 0 # number of non-ship images to remove, set to -1 to drop all non-ship images, 0 to keep everything
+subset: 0 # set to 0 to use all data
