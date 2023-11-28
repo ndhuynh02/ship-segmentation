@@ -94,7 +94,8 @@ class Unet34(torch.nn.Module):
         self.up2 = UNet_Up_Block(256, 128)
         self.up3 = UNet_Up_Block(128, 64)
         self.up4 = UNet_Up_Block(64, 64)
-        self.up5 = torch.nn.ConvTranspose2d(64, 1, 2, stride=2)
+        self.up5 = torch.nn.ConvTranspose2d(64, 64, 2, stride=2)
+        self.up6 = torch.nn.Conv2d(64, 1, kernel_size=1, stride=1, padding=0)
 
     def forward(self, x):
         encoder_output = self.sfs(x)
@@ -104,6 +105,7 @@ class Unet34(torch.nn.Module):
         x = self.up3(x, encoder_output[1])
         x = self.up4(x, encoder_output[0])
         x = self.up5(x)
+        x = self.up6(x)
         return x
 
 
