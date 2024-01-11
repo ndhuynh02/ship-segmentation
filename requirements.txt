@@ -1,5 +1,5 @@
 # --------- pytorch --------- #
-clearml==1.11.0
+clearml==1.14.1
 clearml-serving==1.3.0
 pandas==2.0.2
 torch==1.13.1
