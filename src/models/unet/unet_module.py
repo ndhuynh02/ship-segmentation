@@ -73,7 +73,7 @@ class UNetLitModule(LightningModule):
         self.val_metric_best_2.reset()
 
     def model_step(self, batch: Any):
-        x, y, id = batch[0], batch[1], batch[3]
+        x, y = batch[0], batch[1]
 
         if isinstance(self.criterion, (LossBinary, BCE_Lovasz)):
             cnt1 = (y == 1).sum().item()  # count number of class 1 in image

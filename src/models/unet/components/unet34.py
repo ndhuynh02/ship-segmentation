@@ -1,4 +1,5 @@
 import pyrootutils
+
 pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
 import torch
@@ -33,24 +34,24 @@ class Resnet(torch.nn.Module):
 
 
 class UNet_Up_Block(torch.nn.Module):
-    def __init__(self, up_in, x_in):   
+    def __init__(self, up_in, x_in):
         """
-            up_in: decoder output channel
-            x_in: encoder output channel
-            up_in = 2*x_in
+        up_in: decoder output channel
+        x_in: encoder output channel
+        up_in = 2*x_in
         """
         super().__init__()
         self.tr_conv = torch.nn.ConvTranspose2d(up_in, x_in, 2, stride=2)
-        self.u_conv = torch.nn.Conv2d(2*x_in, x_in, kernel_size=3, padding=1, stride=1)
+        self.u_conv = torch.nn.Conv2d(2 * x_in, x_in, kernel_size=3, padding=1, stride=1)
         self.bn = torch.nn.BatchNorm2d(x_in)
 
     def forward(self, up_p, x_p):
-        up_p = self.tr_conv(up_p)               # x_in
-        cat_p = torch.cat([up_p, x_p], dim=1)   # 2*x_in
+        up_p = self.tr_conv(up_p)  # x_in
+        cat_p = torch.cat([up_p, x_p], dim=1)  # 2*x_in
 
-        out = self.u_conv(cat_p)                # x_in
-        
-        return F.relu(self.bn(out))             # x_in
+        out = self.u_conv(cat_p)  # x_in
+
+        return F.relu(self.bn(out))  # x_in
 
 
 class Unet34(torch.nn.Module):
