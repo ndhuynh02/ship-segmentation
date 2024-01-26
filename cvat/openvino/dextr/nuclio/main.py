@@ -1,8 +1,10 @@
-import json
 import base64
-from PIL import Image
 import io
+import json
+
 from model_handler import ModelHandler
+from PIL import Image
+
 
 def init_context(context):
     context.logger.info("Init context...  0%")
@@ -12,6 +14,7 @@ def init_context(context):
 
     context.logger.info("Init context...100%")
 
+
 def handler(context, event):
     context.logger.info("call handler")
     data = event.body
@@ -20,11 +23,14 @@ def handler(context, event):
     image = Image.open(buf)
 
     mask, polygon = context.user_data.model.handle(image, points)
-    return context.Response(body=json.dumps({
-            'points': polygon,
-            'mask': mask.tolist(),
-        }),
+    return context.Response(
+        body=json.dumps(
+            {
+                "points": polygon,
+                "mask": mask.tolist(),
+            }
+        ),
         headers={},
-        content_type='application/json',
-        status_code=200
+        content_type="application/json",
+        status_code=200,
     )

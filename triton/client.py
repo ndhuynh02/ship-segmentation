@@ -1,16 +1,13 @@
-import numpy as np
-import tritonclient.http as httpclient
-from tritonclient.utils import triton_to_np_dtype
 import albumentations as A
+import matplotlib.pyplot as plt
+import numpy as np
+import torch
+import tritonclient.grpc as grpcclient
+import tritonclient.http as httpclient
 from albumentations import Compose
 from albumentations.pytorch.transforms import ToTensorV2
-
 from PIL import Image
-import matplotlib.pyplot as plt
-import torch
-
-import tritonclient.grpc as grpcclient
-
+from tritonclient.utils import triton_to_np_dtype
 
 # Setting up client HTTP and GRPC
 client = httpclient.InferenceServerClient(url="localhost:8000")
@@ -29,11 +26,12 @@ def preprocess(image):
 
     return transform(image=image)["image"].unsqueeze(0).numpy()
 
+
 if __name__ == "__main__":
     image = Image.open("/home/hayden/Downloads/smol image ship.jpeg").convert("RGB")
     # plt.imshow(image)
     # plt.show()
-    
+
     image = preprocess(image)
     print(image.shape)
 
@@ -44,11 +42,9 @@ if __name__ == "__main__":
     outputs = httpclient.InferRequestedOutput("output__0")
 
     mask = client.infer(model_name="unet", inputs=[inputs])
-    mask = mask.as_numpy('output__0').squeeze()
+    mask = mask.as_numpy("output__0").squeeze()
     mask = torch.sigmoid(torch.from_numpy(mask.copy()))
-    mask = (
-        (mask >= 0.5).cpu().numpy().astype(np.uint8)
-    )
+    mask = (mask >= 0.5).cpu().numpy().astype(np.uint8)
 
     plt.imshow(mask)
     plt.show()

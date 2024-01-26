@@ -91,7 +91,7 @@ metadata:
 
 spec:
   description: Faster R-CNN with Inception ResNet v2 Atrous via Intel OpenVINO toolkit
-  runtime: 'python:3.8'
+  runtime: "python:3.8"
   handler: main:handler
   eventTimeout: 30s
 
@@ -102,7 +102,7 @@ spec:
   triggers:
     myHttpTrigger:
       maxWorkers: 2
-      kind: 'http'
+      kind: "http"
       workerAvailabilityTimeoutMilliseconds: 10000
       attributes:
         maxRequestBodySize: 33554432 # 32MB

@@ -1,8 +1,10 @@
-import json
 import base64
-from PIL import Image
 import io
+import json
+
 from model_handler import ModelHandler
+from PIL import Image
+
 
 def init_context(context):
     context.logger.info("Init context...  0%")
@@ -11,6 +13,7 @@ def init_context(context):
     context.user_data.model = model
 
     context.logger.info("Init context...100%")
+
 
 def handler(context, event):
     context.logger.info("Run person-reidentification-retail-0277 model")
@@ -24,8 +27,10 @@ def handler(context, event):
     boxes0 = data["boxes0"]
     boxes1 = data["boxes1"]
 
-    results = context.user_data.model.infer(image0, boxes0,
-        image1, boxes1, threshold, max_distance)
+    results = context.user_data.model.infer(
+        image0, boxes0, image1, boxes1, threshold, max_distance
+    )
 
-    return context.Response(body=json.dumps(results), headers={},
-        content_type='application/json', status_code=200)
+    return context.Response(
+        body=json.dumps(results), headers={}, content_type="application/json", status_code=200
+    )

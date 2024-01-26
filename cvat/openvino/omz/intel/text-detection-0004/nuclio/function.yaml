@@ -12,7 +12,7 @@ metadata:
 
 spec:
   description: Text detector based on PixelLink architecture with MobileNetV2-like as a backbone for indoor/outdoor scenes.
-  runtime: 'python:3.8'
+  runtime: "python:3.8"
   handler: main:handler
   eventTimeout: 30s
 
@@ -23,7 +23,7 @@ spec:
   triggers:
     myHttpTrigger:
       maxWorkers: 2
-      kind: 'http'
+      kind: "http"
       workerAvailabilityTimeoutMilliseconds: 10000
       attributes:
         maxRequestBodySize: 33554432 # 32MB

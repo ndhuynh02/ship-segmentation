@@ -94,7 +94,7 @@ metadata:
 
 spec:
   description: Mask RCNN inception resnet v2 COCO via Intel OpenVINO
-  runtime: 'python:3.8'
+  runtime: "python:3.8"
   handler: main:handler
   eventTimeout: 60s
 
@@ -105,7 +105,7 @@ spec:
   triggers:
     myHttpTrigger:
       maxWorkers: 2
-      kind: 'http'
+      kind: "http"
       workerAvailabilityTimeoutMilliseconds: 10000
       attributes:
         maxRequestBodySize: 33554432 # 32MB

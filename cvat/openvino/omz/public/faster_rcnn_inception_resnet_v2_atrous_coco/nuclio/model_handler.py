@@ -3,12 +3,18 @@
 # SPDX-License-Identifier: MIT
 
 import os
+
 from model_loader import ModelLoader
+
 
 class ModelHandler:
     def __init__(self, labels):
-        base_dir = os.path.abspath(os.environ.get("MODEL_PATH",
-            "/opt/nuclio/open_model_zoo/public/faster_rcnn_inception_resnet_v2_atrous_coco/FP32"))
+        base_dir = os.path.abspath(
+            os.environ.get(
+                "MODEL_PATH",
+                "/opt/nuclio/open_model_zoo/public/faster_rcnn_inception_resnet_v2_atrous_coco/FP32",
+            )
+        )
         model_xml = os.path.join(base_dir, "faster_rcnn_inception_resnet_v2_atrous_coco.xml")
         model_bin = os.path.join(base_dir, "faster_rcnn_inception_resnet_v2_atrous_coco.bin")
         self.model = ModelLoader(model_xml, model_bin)
@@ -29,11 +35,13 @@ class ModelHandler:
                 xbr = obj[5] * image.width
                 ybr = obj[6] * image.height
 
-                results.append({
-                    "confidence": str(obj_value),
-                    "label": obj_label,
-                    "points": [xtl, ytl, xbr, ybr],
-                    "type": "rectangle",
-                })
+                results.append(
+                    {
+                        "confidence": str(obj_value),
+                        "label": obj_label,
+                        "points": [xtl, ytl, xbr, ybr],
+                        "type": "rectangle",
+                    }
+                )
 
         return results

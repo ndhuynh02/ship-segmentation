@@ -6,8 +6,8 @@ import os
 from math import exp
 
 import ngraph
-
 from model_loader import ModelLoader
+
 
 class YoloParams:
     # ------------------------------------------- Extracting layer parameters ------------------------------------------

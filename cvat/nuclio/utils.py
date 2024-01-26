@@ -1,8 +1,8 @@
-import numpy as np
-
 import albumentations as A
+import numpy as np
 from albumentations import Compose
 from albumentations.pytorch.transforms import ToTensorV2
+
 
 def preprocess(image):
     image = np.array(image)
@@ -16,8 +16,9 @@ def preprocess(image):
 
     return transform(image=image)["image"].unsqueeze(0).numpy()
 
+
 def to_cvat_mask(box: list, mask):
     xtl, ytl, xbr, ybr = box
-    flattened = mask[ytl:ybr + 1, xtl:xbr + 1].flat[:].tolist()
+    flattened = mask[ytl : ybr + 1, xtl : xbr + 1].flat[:].tolist()
     flattened.extend([xtl, ytl, xbr, ybr])
     return flattened

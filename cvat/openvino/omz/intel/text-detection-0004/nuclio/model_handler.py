@@ -4,13 +4,14 @@
 # SPDX-License-Identifier: MIT
 
 import os
+
 import cv2
 import numpy as np
 from model_loader import ModelLoader
 from shared import to_cvat_mask
 
 
-class PixelLinkDecoder():
+class PixelLinkDecoder:
     def __init__(self, pixel_threshold, link_threshold):
         four_neighbours = False
         if four_neighbours:
@@ -23,8 +24,8 @@ class PixelLinkDecoder():
     def decode(self, height, width, detections: dict):
         self.image_height = height
         self.image_width = width
-        self.pixel_scores = self._set_pixel_scores(detections['model/segm_logits/add'])
-        self.link_scores = self._set_link_scores(detections['model/link_logits_/add'])
+        self.pixel_scores = self._set_pixel_scores(detections["model/segm_logits/add"])
+        self.link_scores = self._set_link_scores(detections["model/link_logits_/add"])
 
         self.pixel_mask = self.pixel_scores >= self.pixel_conf_threshold
         self.link_mask = self.link_scores >= self.link_conf_threshold
@@ -45,7 +46,7 @@ class PixelLinkDecoder():
         if b is not None:
             a, b = np.broadcast_arrays(a, b)
             if np.any(b == 0):
-                a = a + 0.  # promote to at least float
+                a = a + 0.0  # promote to at least float
                 a[b == 0] = -np.inf
 
         a_max = np.amax(a, axis=axis, keepdims=True)
@@ -62,7 +63,7 @@ class PixelLinkDecoder():
             tmp = np.exp(a - a_max)
 
         # suppress warnings about log of zero
-        with np.errstate(divide='ignore'):
+        with np.errstate(divide="ignore"):
             s = np.sum(tmp, axis=axis, keepdims=keepdims)
             if return_sign:
                 sgn = np.sign(s)
@@ -79,12 +80,12 @@ class PixelLinkDecoder():
             return out
 
     def _set_pixel_scores(self, pixel_scores):
-        "get softmaxed properly shaped pixel scores"
+        """get softmaxed properly shaped pixel scores."""
         tmp = np.transpose(pixel_scores, (0, 2, 3, 1))
         return self._softmax(tmp, axis=-1)[0, :, :, 1]
 
     def _set_link_scores(self, link_scores):
-        "get softmaxed properly shaped links scores"
+        """get softmaxed properly shaped links scores."""
         tmp = np.transpose(link_scores, (0, 2, 3, 1))
         tmp_reshaped = tmp.reshape(tmp.shape[:-1] + (8, 2))
         return self._softmax(tmp_reshaped, axis=-1)[0, :, :, :, 1]
@@ -123,30 +124,37 @@ class PixelLinkDecoder():
 
     def _get_neighbours_8(self, x, y):
         w, h = self.w, self.h
-        tmp = [(0, x - 1, y - 1), (1, x, y - 1),
-               (2, x + 1, y - 1), (3, x - 1, y),
-               (4, x + 1, y), (5, x - 1, y + 1),
-               (6, x, y + 1), (7, x + 1, y + 1)]
+        tmp = [
+            (0, x - 1, y - 1),
+            (1, x, y - 1),
+            (2, x + 1, y - 1),
+            (3, x - 1, y),
+            (4, x + 1, y),
+            (5, x - 1, y + 1),
+            (6, x, y + 1),
+            (7, x + 1, y + 1),
+        ]
 
         return [i for i in tmp if i[1] >= 0 and i[1] < w and i[2] >= 0 and i[2] < h]
 
     def _get_neighbours_4(self, x, y):
         w, h = self.w, self.h
-        tmp = [(1, x, y - 1),
-               (3, x - 1, y),
-               (4, x + 1, y),
-               (6, x, y + 1)]
+        tmp = [(1, x, y - 1), (3, x - 1, y), (4, x + 1, y), (6, x, y + 1)]
 
         return [i for i in tmp if i[1] >= 0 and i[1] < w and i[2] >= 0 and i[2] < h]
 
     def _mask_to_bboxes(self, min_area=300, min_height=10):
         self.bboxes = []
         max_bbox_idx = self.mask.max()
-        mask_tmp = cv2.resize(self.mask, (self.image_width, self.image_height), interpolation=cv2.INTER_NEAREST)
+        mask_tmp = cv2.resize(
+            self.mask, (self.image_width, self.image_height), interpolation=cv2.INTER_NEAREST
+        )
 
         for bbox_idx in range(1, max_bbox_idx + 1):
             bbox_mask = mask_tmp == bbox_idx
-            cnts, _ = cv2.findContours(bbox_mask.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            cnts, _ = cv2.findContours(
+                bbox_mask.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE
+            )
             if len(cnts) == 0:
                 continue
             cnt = cnts[0]
@@ -167,8 +175,8 @@ class PixelLinkDecoder():
 
     # pylint: disable=no-self-use
     def _order_points(self, rect):
-        """ (x, y)
-            Order: TL, TR, BR, BL
+        """(x, y)
+        Order: TL, TR, BR, BL
         """
         tmp = np.zeros_like(rect)
         sums = rect.sum(axis=1)
@@ -192,10 +200,14 @@ class PixelLinkDecoder():
         self._get_all()
         self._mask_to_bboxes()
 
+
 class ModelHandler:
     def __init__(self, labels):
-        base_dir = os.path.abspath(os.environ.get("MODEL_PATH",
-            "/opt/nuclio/open_model_zoo/intel/text-detection-0004/FP32"))
+        base_dir = os.path.abspath(
+            os.environ.get(
+                "MODEL_PATH", "/opt/nuclio/open_model_zoo/intel/text-detection-0004/FP32"
+            )
+        )
         model_xml = os.path.join(base_dir, "text-detection-0004.xml")
         model_bin = os.path.join(base_dir, "text-detection-0004.bin")
         self.model = ModelLoader(model_xml, model_bin)
@@ -212,7 +224,9 @@ class ModelHandler:
         for box in pcd.bboxes:
             mask = pcd.pixel_mask
             mask = np.array(mask, dtype=np.uint8)
-            mask = cv2.resize(mask, dsize=(image.width, image.height), interpolation=cv2.INTER_CUBIC)
+            mask = cv2.resize(
+                mask, dsize=(image.width, image.height), interpolation=cv2.INTER_CUBIC
+            )
             cv2.normalize(mask, mask, 0, 255, cv2.NORM_MINMAX)
 
             box = box.ravel().tolist()
@@ -222,12 +236,14 @@ class ModelHandler:
             y_max = max(box[1::2])
             cvat_mask = to_cvat_mask((x_min, y_min, x_max, y_max), mask)
 
-            results.append({
-                "confidence": None,
-                "label": self.labels.get(obj_class, "unknown"),
-                "points": box,
-                "mask": cvat_mask,
-                "type": "mask",
-            })
+            results.append(
+                {
+                    "confidence": None,
+                    "label": self.labels.get(obj_class, "unknown"),
+                    "points": box,
+                    "mask": cvat_mask,
+                    "type": "mask",
+                }
+            )
 
         return results

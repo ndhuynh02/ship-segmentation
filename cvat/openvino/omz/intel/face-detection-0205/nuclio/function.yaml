@@ -28,7 +28,7 @@ metadata:
 
 spec:
   description: Detection network finding faces and defining age, gender and emotion attributes
-  runtime: 'python:3.8'
+  runtime: "python:3.8"
   handler: main:handler
   eventTimeout: 30000s
 
@@ -39,7 +39,7 @@ spec:
   triggers:
     myHttpTrigger:
       maxWorkers: 2
-      kind: 'http'
+      kind: "http"
       workerAvailabilityTimeoutMilliseconds: 10000
       attributes:
         maxRequestBodySize: 33554432 # 32MB
