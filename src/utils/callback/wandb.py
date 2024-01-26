@@ -51,7 +51,7 @@ class WandbCallback(Callback):
             (0, 255, 255),
         ]
 
-    def on_train_start(self, trainer, pl_module):
+    def setup(self, trainer, pl_module, stage):
         self.logger = trainer.logger
 
     def on_validation_batch_end(
@@ -151,6 +151,12 @@ class WandbCallback(Callback):
             for i in range(3):
                 ind = mask[:, :, i] > 0
                 img[ind] = weighted_sum[ind]
+
+            # Code to try to fix CUDA out of memory issues
+            del weighted_sum
+            gc.collect()
+            torch.cuda.empty_cache()
+
             return img
 
         for img, pred, id in zip(images, preds, ids):
@@ -177,6 +183,7 @@ class WandbCallback(Callback):
             # Code to try to fix CUDA out of memory issues
             del masks
             del target
+            del pred
             gc.collect()
             torch.cuda.empty_cache()
 

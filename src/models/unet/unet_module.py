@@ -83,6 +83,10 @@ class UNetLitModule(LightningModule):
             else:
                 BCE_pos_weight = torch.FloatTensor([1.0]).to(device=self.device)
 
+            del cnt1, cnt1
+            gc.collect()
+            torch.cuda.empty_cache()
+
             self.criterion.update_pos_weight(pos_weight=BCE_pos_weight)
 
         preds = self.forward(x)
@@ -102,6 +106,11 @@ class UNetLitModule(LightningModule):
         self.train_loss(loss)
         self.train_metric_1(preds, targets)
         self.train_metric_2(preds, targets.int())
+
+        # Code to try to fix CUDA out of memory issues
+        del preds, targets
+        gc.collect()
+        torch.cuda.empty_cache()
 
         self.log("train/loss", self.train_loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log("train/jaccard", self.train_metric_1, on_step=False, on_epoch=True, prog_bar=True)
@@ -145,6 +154,12 @@ class UNetLitModule(LightningModule):
         # update best so far val acc
         self.val_metric_best_1(acc1)
         self.val_metric_best_2(acc2)
+
+        # Code to try to fix CUDA out of memory issues
+        del acc1, acc2
+        gc.collect()
+        torch.cuda.empty_cache()
+
         # log `val_acc_best` as a value through `.compute()` method, instead of as a metric object
         # otherwise metric would be reset by lightning after each epoch
         self.log("val/jaccard_best", self.val_metric_best_1.compute(), prog_bar=True)

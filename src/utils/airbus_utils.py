@@ -2,6 +2,7 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import gc
 
 
 def rle_decode(mask_rle, shape=(768, 768)):
@@ -17,6 +18,11 @@ def rle_decode(mask_rle, shape=(768, 768)):
     img = np.zeros(shape[0] * shape[1], dtype=np.uint8)
     for lo, hi in zip(starts, ends):
         img[lo:hi] = 1
+
+    del s, starts, lengths, ends
+    gc.collect()
+    torch.cuda.empty_cache()
+
     return img.reshape(shape).T  # Needed to align to RLE direction
 
 
@@ -37,6 +43,11 @@ def mask_overlay(image, mask, color=(0, 1, 0)):
     img = image.copy()
     ind = mask[:, :, 1] > 0
     img[ind] = weighted_sum[ind]
+
+    del mask, weighted_sum, ind
+    gc.collect()
+    torch.cuda.empty_cache()
+
     return img
 
 

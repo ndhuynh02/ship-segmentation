@@ -1,4 +1,5 @@
 import pyrootutils
+
 pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
 import torch
@@ -33,18 +34,28 @@ class Resnet(torch.nn.Module):
 
 
 class UNet_Up_Block(torch.nn.Module):
-    def __init__(self, up_in, x_in, n_out):
+    def __init__(self, up_in, x_in):
+        """
+        up_in: decoder output channel
+        x_in: encoder output channel
+        up_in = 2*x_in
+        """
         super().__init__()
-        up_out = x_out = n_out // 2
-        self.x_conv = torch.nn.Conv2d(x_in, x_out, 1)
-        self.tr_conv = torch.nn.ConvTranspose2d(up_in, up_out, 2, stride=2)
-        self.bn = torch.nn.BatchNorm2d(n_out)
+        self.tr_conv = torch.nn.ConvTranspose2d(up_in, x_in, 2, stride=2)
+        self.u_conv = torch.nn.Sequential(
+            torch.nn.Conv2d(2 * x_in, x_in, kernel_size=3, padding=1, bias=False),
+            torch.nn.BatchNorm2d(x_in),
+            torch.nn.ReLU(inplace=True),
+            torch.nn.Conv2d(x_in, x_in, kernel_size=3, padding=1, bias=False),
+            torch.nn.BatchNorm2d(x_in),
+            torch.nn.ReLU(inplace=True)
+        )
 
     def forward(self, up_p, x_p):
-        up_p = self.tr_conv(up_p)
-        x_p = self.x_conv(x_p)
-        cat_p = torch.cat([up_p, x_p], dim=1)
-        return self.bn(F.relu(cat_p))
+        up_p = self.tr_conv(up_p)  # x_in
+        cat_p = torch.cat([up_p, x_p], dim=1)  # 2*x_in
+
+        return self.u_conv(cat_p)  # x_in
 
 
 class Unet34(torch.nn.Module):
@@ -84,11 +95,12 @@ class Unet34(torch.nn.Module):
                 print("arch input is not valid. Using torchvision.models ResNet34 as default.")
 
         self.sfs = Resnet(self.rn)
-        self.up1 = UNet_Up_Block(512, 256, 256)
-        self.up2 = UNet_Up_Block(256, 128, 256)
-        self.up3 = UNet_Up_Block(256, 64, 256)
-        self.up4 = UNet_Up_Block(256, 64, 256)
-        self.up5 = torch.nn.ConvTranspose2d(256, 1, 2, stride=2)
+        self.up1 = UNet_Up_Block(512, 256)
+        self.up2 = UNet_Up_Block(256, 128)
+        self.up3 = UNet_Up_Block(128, 64)
+        self.up4 = UNet_Up_Block(64, 64)
+        self.up5 = torch.nn.ConvTranspose2d(64, 1, 2, stride=2)
+        # self.up6 = torch.nn.Conv2d(64, 1, kernel_size=1, stride=1, padding=0)
 
     def forward(self, x):
         encoder_output = self.sfs(x)
@@ -98,23 +110,14 @@ class Unet34(torch.nn.Module):
         x = self.up3(x, encoder_output[1])
         x = self.up4(x, encoder_output[0])
         x = self.up5(x)
+        # x = self.up6(x)
         return x
 
 
 if __name__ == "__main__":
-    x = torch.rand((1, 3, 256, 256))
-
-    rn34 = resnet34(weights=ResNet34_Weights.DEFAULT)
-    rn34_feature_extractor = torch.nn.Sequential(*list(rn34.children())[:-2])
-    model = Resnet(rn34_feature_extractor)
-
-    output = model(x)
-
-    for out in output:
-        print(out.shape)
-
-    # model = Unet34()
-    # print(model(x).shape)
+    x = torch.rand((1, 3, 768, 768))
+    model = Unet34()
+    print(model(x).shape)
     # print(model(x).min())  # 'torch.Size([1, 1, 256, 256])
     # print(model(x).max())
 
