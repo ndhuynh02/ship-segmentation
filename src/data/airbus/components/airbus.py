@@ -19,7 +19,7 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
-from src.utils.airbus_utils import imshow, masks_as_image
+from src.utils.airbus_utils import imshow, masks_as_image, mask_overlay
 
 
 class AirbusDataset(Dataset):
@@ -28,10 +28,14 @@ class AirbusDataset(Dataset):
         data_dir: str = "data/airbus",
         undersample: int = 140000,
         subset: int = 10000,
+        bbox_format="corners"
     ) -> None:
         super().__init__()
 
+        assert bbox_format in ['midpoint', 'corners']
+
         self.data_dir = data_dir
+        self.bbox_format = bbox_format
         self.prepare_data()
 
         masks = pd.read_csv(os.path.join(self.data_dir, "train_ship_segmentations_v2.csv"))
@@ -82,10 +86,9 @@ class AirbusDataset(Dataset):
         mask = self.dataframe[self.dataframe["ImageId"] == file_id]["EncodedPixels"]
 
         image = Image.open(image).convert("RGB")
-        mask = masks_as_image(mask)
-        label = 0 if mask.sum() == 0 else 1
+        mask, bbox = masks_as_image(mask, self.bbox_format)
 
-        return np.array(image, dtype=np.uint8), mask, label, file_id
+        return np.array(image, dtype=np.uint8), mask, bbox, file_id
 
     def prepare_data(self):
         data_path = os.path.join(self.data_dir, "train_v2")
@@ -124,10 +127,9 @@ class AirbusDataset(Dataset):
 
 
 if __name__ == "__main__":
-    airbus = AirbusDataset()
-    img, mask, label, img_id = airbus[2]
-    print(img.shape)
-    print(mask.shape)
-    print(label)
-    print(img_id)
-    imshow(img, mask)
+    import cv2
+    import matplotlib.pyplot as plt
+
+    data = AirbusDataset(undersample=-1, subset=100)
+    image, mask, bboxes, img_id = data[1]
+    imshow(image, mask, bboxes)
