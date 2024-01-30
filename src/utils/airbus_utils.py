@@ -1,10 +1,11 @@
+import gc
+
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import gc
-
 from skimage.measure import label, regionprops
+
 
 def rle_decode(mask_rle, shape=(768, 768)):
     """
@@ -28,7 +29,7 @@ def rle_decode(mask_rle, shape=(768, 768)):
 
 
 def masks_as_image(in_mask_list, bbox_format="corners"):
-    assert bbox_format in ['midpoint', 'corners']
+    assert bbox_format in ["midpoint", "corners"]
 
     # Take the individual ship masks and create a single mask array for all ships
     all_masks = np.zeros((768, 768), dtype=np.uint8)
@@ -40,15 +41,17 @@ def masks_as_image(in_mask_list, bbox_format="corners"):
 
             if bbox_format == "midpoint":
                 height = box.bbox[2] - box.bbox[0]  # y2 - y1
-                width = box.bbox[3] - box.bbox[1]   # x2 - x1
+                width = box.bbox[3] - box.bbox[1]  # x2 - x1
 
                 y_mid, x_mid = box.centroid
 
-                all_bboxes.append((x_mid, y_mid, width, height))     # x_mid, y_mid, width, height
+                all_bboxes.append((x_mid, y_mid, width, height))  # x_mid, y_mid, width, height
 
             if bbox_format == "corners":
-                all_bboxes.append((box.bbox[1], box.bbox[0], box.bbox[3], box.bbox[2]))     # x1, y1, x2, y2
-            
+                all_bboxes.append(
+                    (box.bbox[1], box.bbox[0], box.bbox[3], box.bbox[2])
+                )  # x1, y1, x2, y2
+
             all_masks |= mask
     return all_masks, all_bboxes
 
@@ -73,7 +76,9 @@ def imshow(img, mask, bboxes=None, title=None):
     plt.figure(figsize=(6, 6))
     if bboxes is not None:
         for box in bboxes:
-            img = cv2.rectangle(img, (int(box[0]), int(box[1])), (int(box[2]), int(box[3])), (255, 0, 0), 1)
+            img = cv2.rectangle(
+                img, (int(box[0]), int(box[1])), (int(box[2]), int(box[3])), (255, 0, 0), 1
+            )
     plt.imshow(mask_overlay(img, mask))
     if title is not None:
         plt.title(title)

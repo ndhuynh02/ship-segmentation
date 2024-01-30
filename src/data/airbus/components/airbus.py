@@ -19,7 +19,7 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
-from src.utils.airbus_utils import imshow, masks_as_image, mask_overlay
+from src.utils.airbus_utils import imshow, mask_overlay, masks_as_image
 
 
 class AirbusDataset(Dataset):
@@ -28,11 +28,11 @@ class AirbusDataset(Dataset):
         data_dir: str = "data/airbus",
         undersample: int = 140000,
         subset: int = 10000,
-        bbox_format="corners"
+        bbox_format="corners",
     ) -> None:
         super().__init__()
 
-        assert bbox_format in ['midpoint', 'corners']
+        assert bbox_format in ["midpoint", "corners"]
 
         self.data_dir = data_dir
         self.bbox_format = bbox_format

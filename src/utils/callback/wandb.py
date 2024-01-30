@@ -23,7 +23,7 @@ class WandbCallback(Callback):
     def __init__(self, data_path: str = "data/airbus", n_images_to_log: int = 5):
         # download dataset if needed
         _ = AirbusDataset(data_dir=data_path)
-        
+
         self.n_images_to_log = n_images_to_log  # number of logged images when eval
 
         # self.four_first_preds = []
@@ -128,7 +128,7 @@ class WandbCallback(Callback):
     #     self.four_first_batch.clear()
     #     self.four_first_image.clear()
     #     self.show_pred.clear()
-        # self.show_target.clear()
+    # self.show_target.clear()
 
     def on_test_batch_end(
         self,

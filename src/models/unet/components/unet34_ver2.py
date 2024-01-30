@@ -48,7 +48,7 @@ class UNet_Up_Block(torch.nn.Module):
             torch.nn.ReLU(inplace=True),
             torch.nn.Conv2d(x_in, x_in, kernel_size=3, padding=1, bias=False),
             torch.nn.BatchNorm2d(x_in),
-            torch.nn.ReLU(inplace=True)
+            torch.nn.ReLU(inplace=True),
         )
 
     def forward(self, up_p, x_p):
