@@ -43,7 +43,8 @@ def masks_as_image(in_mask_list, bbox_format="corners"):
                 height = box.bbox[2] - box.bbox[0]  # y2 - y1
                 width = box.bbox[3] - box.bbox[1]  # x2 - x1
 
-                y_mid, x_mid = box.centroid
+                x_mid = box.bbox[1] + width / 2.0
+                y_mid = box.bbox[0] + height / 2.0
 
                 all_bboxes.append((x_mid, y_mid, width, height))  # x_mid, y_mid, width, height
 
@@ -72,14 +73,16 @@ def mask_overlay(image, mask, color=(0, 1, 0)):
     return img
 
 
-def imshow(img, mask, bboxes=None, title=None):
+def imshow(img, mask=None, bboxes=None, title=None):
     plt.figure(figsize=(6, 6))
     if bboxes is not None:
         for box in bboxes:
             img = cv2.rectangle(
                 img, (int(box[0]), int(box[1])), (int(box[2]), int(box[3])), (255, 0, 0), 1
             )
-    plt.imshow(mask_overlay(img, mask))
+    if mask is not None:
+        img = mask_overlay(img, mask)
+    plt.imshow(img)
     if title is not None:
         plt.title(title)
     plt.show()

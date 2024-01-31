@@ -19,7 +19,7 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
-from src.utils.airbus_utils import imshow, mask_overlay, masks_as_image
+from src.utils.airbus_utils import imshow, masks_as_image
 
 
 class AirbusDataset(Dataset):
@@ -127,9 +127,6 @@ class AirbusDataset(Dataset):
 
 
 if __name__ == "__main__":
-    import cv2
-    import matplotlib.pyplot as plt
-
     data = AirbusDataset(undersample=-1, subset=100)
     image, mask, bboxes, img_id = data[1]
     imshow(image, mask, bboxes)
