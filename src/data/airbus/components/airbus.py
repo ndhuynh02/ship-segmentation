@@ -29,6 +29,7 @@ class AirbusDataset(Dataset):
         undersample: int = 140000,
         subset: int = 10000,
         bbox_format="corners",
+        rotated_bbox=False
     ) -> None:
         super().__init__()
 
@@ -36,6 +37,7 @@ class AirbusDataset(Dataset):
 
         self.data_dir = data_dir
         self.bbox_format = bbox_format
+        self.rotated_bbox = rotated_bbox
         self.prepare_data()
 
         masks = pd.read_csv(os.path.join(self.data_dir, "train_ship_segmentations_v2.csv"))
@@ -84,11 +86,17 @@ class AirbusDataset(Dataset):
         file_id = image.split("/")[-1]
 
         mask = self.dataframe[self.dataframe["ImageId"] == file_id]["EncodedPixels"]
-
+        
         image = Image.open(image).convert("RGB")
-        mask, bbox = masks_as_image(mask, self.bbox_format)
+        masks, bboxes = masks_as_image(mask, self.bbox_format, self.rotated_bbox)
+            
+        target = {}
 
-        return np.array(image, dtype=np.uint8), mask, bbox, file_id
+        target["boxes"] = bboxes
+        target["labels"] = np.ones((len(bboxes),))
+        target["masks"] = masks
+
+        return np.array(image, dtype=np.uint8), target, file_id
 
     def prepare_data(self):
         data_path = os.path.join(self.data_dir, "train_v2")
@@ -127,6 +135,8 @@ class AirbusDataset(Dataset):
 
 
 if __name__ == "__main__":
-    data = AirbusDataset(undersample=-1, subset=100)
-    image, mask, bboxes, img_id = data[1]
-    imshow(image, mask, bboxes)
+    bbox_format = "midpoint"
+    rotated_bbox = True
+    data = AirbusDataset(undersample=-1, subset=100, bbox_format=bbox_format, rotated_bbox=rotated_bbox)
+    image, target, img_id = data[1]
+    imshow(image, target['masks'], target['boxes'], bbox_format=bbox_format, rotated_bbox=rotated_bbox)
