@@ -13,7 +13,7 @@ from torchvision.models import (
     resnet101,
 )
 
-from src.models.classifier.classifier_module import ResNetLitModule
+from src.models.unet.resnet_module import ResNetLitModule
 from src.models.unet.components.resnet34 import ResNet34_Binary
 
 
@@ -103,7 +103,7 @@ class Unet34(torch.nn.Module):
 
 
 if __name__ == "__main__":
-    x = torch.rand((1, 3, 256, 256))
+    x = torch.rand((1, 3, 768, 768))
 
     rn34 = resnet34(weights=ResNet34_Weights.DEFAULT)
     rn34_feature_extractor = torch.nn.Sequential(*list(rn34.children())[:-2])
@@ -111,6 +111,7 @@ if __name__ == "__main__":
 
     output = model(x)
 
+    print(x.shape)
     for out in output:
         print(out.shape)
 
