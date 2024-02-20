@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader, Dataset, Subset, random_split
 
 from data.airbus.components.airbus import AirbusDataset
 from data.airbus.components.transform_airbus import TransformAirbus
+from data.airbus.components.mask_rcnn_airbus import MaskRCNNAirbus
 from src.utils.airbus_utils import imshow_batch
 
 
@@ -50,6 +51,8 @@ class AirbusDataModule(LightningDataModule):
         pin_memory: bool = False,
         undersample: int = 140000,
         subset: int = 10000,
+        bbox_format="corners",
+        rotated_bbox=False
     ):
         super().__init__()
 
@@ -73,6 +76,8 @@ class AirbusDataModule(LightningDataModule):
                 data_dir=self.hparams.data_dir,
                 undersample=self.hparams.undersample,
                 subset=self.hparams.subset,
+                bbox_format=self.hparams.bbox_format,
+                rotated_bbox=self.hparams.rotated_bbox
             )
             # Try catch block for stratified splits
             try:
@@ -120,10 +125,13 @@ class AirbusDataModule(LightningDataModule):
 
                 print("Using random_split.")
             # create transform dataset from subset
-            self.data_train = TransformAirbus(self.data_train, self.hparams.transform_train)
-            self.data_val = TransformAirbus(self.data_val, self.hparams.transform_val)
-            self.data_test = TransformAirbus(self.data_test, self.hparams.transform_val)
-
+            # self.data_train = TransformAirbus(self.data_train, self.hparams.transform_train)
+            # self.data_val = TransformAirbus(self.data_val, self.hparams.transform_val)
+            # self.data_test = TransformAirbus(self.data_test, self.hparams.transform_val)
+            self.data_train = MaskRCNNAirbus(self.data_train.dataset)
+            self.data_val = MaskRCNNAirbus(self.data_val.dataset)
+            self.data_test = MaskRCNNAirbus(self.data_test.dataset)
+            
     # visualize distribution of train, val & test
     def visualize_dist(self, masks, train_ids, val_ids, test_ids):
         import matplotlib.pyplot as plt
@@ -172,6 +180,7 @@ class AirbusDataModule(LightningDataModule):
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
             shuffle=True,
+            collate_fn=AirbusDataModule.custom_collate
         )
 
     def val_dataloader(self):
@@ -181,6 +190,7 @@ class AirbusDataModule(LightningDataModule):
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
             shuffle=False,
+            collate_fn=AirbusDataModule.custom_collate
         )
 
     def test_dataloader(self):
@@ -190,7 +200,12 @@ class AirbusDataModule(LightningDataModule):
             num_workers=self.hparams.num_workers,
             pin_memory=self.hparams.pin_memory,
             shuffle=False,
+            collate_fn=AirbusDataModule.custom_collate
         )
+    
+    @staticmethod
+    def custom_collate(data):
+        return data
 
 
 if __name__ == "__main__":
