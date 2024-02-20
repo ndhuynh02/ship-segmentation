@@ -119,7 +119,7 @@ def midpoint2corners(bboxes, rotated_bbox=False):
     return bounding_boxes
 
 
-def conners2midpoint(bboxes, rotated_bbox=False):
+def corners2midpoint(bboxes, rotated_bbox=False):
     if not rotated_bbox:
         # (x_min, y_min, x_max, y_max) --> (x_mid, y_mid, width, height)
         bounding_boxes = bboxes.copy()
@@ -142,10 +142,18 @@ def conners2midpoint(bboxes, rotated_bbox=False):
 
 
 def mergeMask(masks):
-    mask = np.zeros(masks.shape[-2:], dtype=np.uint8)
-    for m in masks:
-        mask |= m
-    return mask
+    assert isinstance(masks, np.ndarray) or torch.is_tensor(masks)
+
+    if isinstance(masks, np.ndarray):
+        mask = np.zeros(masks.shape[-2:], dtype=np.uint8)
+        for m in masks:
+            mask = np.bitwise_or(mask, m)
+        return mask
+    if torch.is_tensor(masks):
+        mask = torch.zeros(masks.shape[-2:], dtype=torch.uint8)
+        for m in masks:
+            mask = torch.bitwise_or(mask, m)
+        return mask
 
 
 def imshow(image, masks=None, bboxes=None, bbox_format="corners", rotated_bbox=False,  title=None):
@@ -176,7 +184,8 @@ def imshow(image, masks=None, bboxes=None, bbox_format="corners", rotated_bbox=F
     if title is not None:
         plt.title(title)
     plt.axis("off")
-    plt.savefig("foo.png", bbox_inches='tight')
+    # plt.savefig("foo.png", bbox_inches='tight')
+    plt.show()
 
     del img, bounding_boxes
 
