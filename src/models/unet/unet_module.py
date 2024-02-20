@@ -147,7 +147,7 @@ class UNetLitModule(LightningModule):
 
         return {"loss": loss, "preds": preds, "targets": targets}
 
-    def validation_epoch_end(self, outputs: List[Any]):
+    def on_validation_epoch_end(self):
         # get current val acc
         acc1 = self.val_metric_1.compute()
         acc2 = self.val_metric_2.compute()
