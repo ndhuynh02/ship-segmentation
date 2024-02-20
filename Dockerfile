@@ -1,4 +1,5 @@
-FROM pytorch/pytorch:1.12.1-cuda11.3-cudnn8-devel
+FROM pytorch/pytorch:2.1.0-cuda11.8-cudnn8-devel
+ARG DEBIAN_FRONTEND=noninteractive
 
 # Set working directory
 WORKDIR /workspace
