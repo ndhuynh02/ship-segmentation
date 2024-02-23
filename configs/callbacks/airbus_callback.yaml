@@ -1,3 +1,3 @@
 defaults:
   - default.yaml
-  - wandb_callback.yaml
+  - mask_rcnn_callback.yaml
