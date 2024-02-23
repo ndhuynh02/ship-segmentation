@@ -81,7 +81,9 @@ class MaskRCNNLitModule(LightningModule):
         x, y = [], []
         for b in batch:
             x.append(b[0])
-            y.append({k: v for k, v in b[1].items()})
+            target = {k: v for k, v in b[1].items()}
+            target["image_id"] = b[2]
+            y.append(target)
 
         pred = self.net(x, y, is_training=False)
         loss = self.net(x, y, is_training=True)
