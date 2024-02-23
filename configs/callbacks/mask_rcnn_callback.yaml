@@ -1,0 +1,4 @@
+wandb_callback:
+  _target_: src.utils.callback.wandb.WandbCallback
+  data_path: ${paths.data_dir}/airbus
+  n_images_to_log: 5
