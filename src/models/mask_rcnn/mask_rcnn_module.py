@@ -100,14 +100,17 @@ class MaskRCNNLitModule(LightningModule):
         loss_total = sum(l for l in loss.values())
 
         target_mask = torch.as_tensor(
-            np.array([mergeMask(mask['masks']) 
-                for mask in targets]), dtype=torch.uint8)
+            np.array([mergeMask(mask['masks'].cpu()) 
+                for mask in targets]), dtype=torch.uint8, device=self.device)
+        
+        # mask rccn returns masks with shape [N, 1, H, w]
+        # -> squeeze(1) to remove the 1.
         # only get the mask which has score is larger than 0.5
         # also, use 0.5 as mask threshold  
         pred_mask = torch.as_tensor(
-            np.array([mergeMask(mask['masks'].squeeze()[mask['scores'] >= 0.5] >= 0.5) 
+            np.array([mergeMask(mask['masks'].squeeze(1).cpu()[mask['scores'].cpu() >= 0.5] >= 0.5)
                 for mask in preds])
-            , dtype=torch.uint8)
+            , dtype=torch.uint8, device=self.device)
 
         # update and log metrics
         self.train_loss(loss_total)
@@ -125,7 +128,7 @@ class MaskRCNNLitModule(LightningModule):
         self.log("train/loss_total", self.train_loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log("train/jaccard", self.train_jaccard, on_step=False, on_epoch=True, prog_bar=True)
         self.log("train/dice", self.train_dice, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("train/Box IOU", self.train_box_iou.compute()['iou'], on_step=False, on_epoch=True, prog_bar=True)
+        self.log("train/box_iou", self.train_box_iou.compute()['iou'], on_step=False, on_epoch=True, prog_bar=True)
 
         # we can return here dict with any tensors
         # and then read it in some callback or in `training_epoch_end()` below
@@ -138,14 +141,17 @@ class MaskRCNNLitModule(LightningModule):
 
         # print([mergeMask(mask['masks']) for mask in targets])
         target_mask = torch.as_tensor(
-            np.array([mergeMask(mask['masks']) 
-                for mask in targets]), dtype=torch.uint8)
+            np.array([mergeMask(mask['masks'].cpu()) 
+                for mask in targets]), dtype=torch.uint8, device=self.device)
+        
+        # mask rccn returns masks with shape [N, 1, H, w]
+        # -> squeeze(1) to remove the 1.
         # only get the mask which has score is larger than 0.5
         # also, use 0.5 as mask threshold  
         pred_mask = torch.as_tensor(
-            np.array([mergeMask(mask['masks'].squeeze()[mask['scores'] >= 0.5] >= 0.5) 
+            np.array([mergeMask(mask['masks'].squeeze(1).cpu()[mask['scores'].cpu() >= 0.5] >= 0.5)
                 for mask in preds])
-            , dtype=torch.uint8)
+            , dtype=torch.uint8, device=self.device)
 
         # update and log metrics
         self.val_loss(loss_total)
@@ -189,14 +195,17 @@ class MaskRCNNLitModule(LightningModule):
         loss_total = sum(l for l in loss.values())
 
         target_mask = torch.as_tensor(
-            np.array([mergeMask(mask['masks']) 
-                for mask in targets]), dtype=torch.uint8)
+            np.array([mergeMask(mask['masks'].cpu()) 
+                for mask in targets]), dtype=torch.uint8, device=self.device)
+
+        # mask rccn returns masks with shape [N, 1, H, w]
+        # -> squeeze(1) to remove the 1.
         # only get the mask which has score is larger than 0.5
-        # also, use 0.5 as mask threshold  
+        # also, use 0.5 as mask threshold.  
         pred_mask = torch.as_tensor(
-            np.array([mergeMask(mask['masks'].squeeze()[mask['scores'] >= 0.5] >= 0.5) 
+            np.array([mergeMask(mask['masks'].squeeze(1).cpu()[mask['scores'].cpu() >= 0.5] >= 0.5)
                 for mask in preds])
-            , dtype=torch.uint8)
+            , dtype=torch.uint8, device=self.device)
 
         # update and log metrics
         self.test_loss(loss_total)
@@ -227,7 +236,7 @@ class MaskRCNNLitModule(LightningModule):
                 "optimizer": optimizer,
                 "lr_scheduler": {
                     "scheduler": scheduler,
-                    "monitor": "val/loss",
+                    "monitor": "val/loss_total",
                     "interval": "epoch",
                     "frequency": 1,
                 },
