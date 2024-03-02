@@ -18,8 +18,9 @@ class MaskRCNN(nn.Module):
 
         self.model = model
 
-    def forward(self, x, target, is_training=True):
+    def forward(self, x, target=None, is_training=True):
         if is_training:
+            assert target is not None, "target must be specify when `is_training=True`"
             self.model.train()
             return self.model(x, target)
         else:
