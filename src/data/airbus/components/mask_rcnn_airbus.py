@@ -50,7 +50,7 @@ class MaskRCNNAirbus(Dataset):
         return len(self.dataset)
 
     def __getitem__(self, index) -> Any:
-        image, target, file_id = self.dataset[index]
+        image, target = self.dataset[index]
         masks = target['masks']      # (num_object, 768, 768)
         bboxes = target['boxes']
         labels = target['labels']
@@ -63,7 +63,7 @@ class MaskRCNNAirbus(Dataset):
             target['labels'] = torch.as_tensor(labels , dtype = torch.int64)
             target['masks'] = torch.as_tensor(masks, dtype=torch.uint8)
             
-            return image, target, file_id
+            return image, target
 
         if self.dataset.rotated_bbox:
             # midpoint: x_mid, y_mid, width, height, angle
@@ -94,7 +94,7 @@ class MaskRCNNAirbus(Dataset):
         # it is needed to be numpy.narray 1st, then torch.Tensor
         target['masks'] = torch.as_tensor(np.array(masks), dtype=torch.uint8)
 
-        return image, target, file_id
+        return image, target
 
 
 if __name__ == "__main__":

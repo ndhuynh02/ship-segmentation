@@ -76,13 +76,14 @@ class MaskRCNNLitModule(LightningModule):
         self.val_dice_best.reset()
         self.val_box_iou_best.reset()
 
+    def forward(self, x):
+        return self.net(x, is_training=False)
 
     def model_step(self, batch: Any):
         x, y = [], []
         for b in batch:
             x.append(b[0])
             target = {k: v for k, v in b[1].items()}
-            target["image_id"] = b[2]
             y.append(target)
 
         pred = self.net(x, y, is_training=False)
@@ -124,11 +125,11 @@ class MaskRCNNLitModule(LightningModule):
         torch.cuda.empty_cache()
 
         for loss_type, value in loss.items():
-            self.log("train/" + str(loss_type), value.item(), on_step=False, on_epoch=True, prog_bar=True)
-        self.log("train/loss_total", self.train_loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("train/jaccard", self.train_jaccard, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("train/dice", self.train_dice, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("train/box_iou", self.train_box_iou.compute()['iou'], on_step=False, on_epoch=True, prog_bar=True)
+            self.log("train/" + str(loss_type), value.item(), on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
+        self.log("train/loss_total", self.train_loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
+        self.log("train/jaccard", self.train_jaccard, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
+        self.log("train/dice", self.train_dice, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
+        self.log("train/box_iou", self.train_box_iou.compute()['iou'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
 
         # we can return here dict with any tensors
         # and then read it in some callback or in `training_epoch_end()` below
@@ -160,11 +161,11 @@ class MaskRCNNLitModule(LightningModule):
         self.val_box_iou(preds, targets)
 
         for loss_type, value in loss.items():
-            self.log("val/" + str(loss_type), value.item(), on_step=False, on_epoch=True, prog_bar=True)
-        self.log("val/loss_total", self.val_loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("val/jaccard", self.val_jaccard, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("val/dice", self.val_dice, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("val/box_iou", self.val_box_iou.compute()['iou'], on_step=False, on_epoch=True, prog_bar=True)
+            self.log("val/" + str(loss_type), value.item(), on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
+        self.log("val/loss_total", self.val_loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
+        self.log("val/jaccard", self.val_jaccard, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
+        self.log("val/dice", self.val_dice, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
+        self.log("val/box_iou", self.val_box_iou.compute()['iou'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
 
         return {"loss": loss, "preds": preds, "targets": targets}
 
@@ -214,11 +215,11 @@ class MaskRCNNLitModule(LightningModule):
         self.test_box_iou(preds, targets)
 
         for loss_type, value in loss.items():
-            self.log("test/" + str(loss_type), value.item(), on_step=False, on_epoch=True, prog_bar=True)
-        self.log("test/loss_total", self.test_loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("test/jaccard", self.test_jaccard, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("test/dice", self.test_dice, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("test/box_iou", self.test_box_iou.compute()['iou'], on_step=False, on_epoch=True, prog_bar=True)
+            self.log("test/" + str(loss_type), value.item(), on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
+        self.log("test/loss_total", self.test_loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
+        self.log("test/jaccard", self.test_jaccard, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
+        self.log("test/dice", self.test_dice, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
+        self.log("test/box_iou", self.test_box_iou.compute()['iou'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
 
         return {"loss": loss, "preds": preds, "targets": targets}
 

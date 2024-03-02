@@ -95,8 +95,9 @@ class AirbusDataset(Dataset):
         target["boxes"] = bboxes
         target["labels"] = np.ones((len(bboxes),))
         target["masks"] = masks
+        target["image_id"] = file_id
 
-        return np.array(image, dtype=np.uint8), target, file_id
+        return np.array(image, dtype=np.uint8), target
 
     def prepare_data(self):
         data_path = os.path.join(self.data_dir, "train_v2")
