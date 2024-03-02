@@ -24,27 +24,28 @@ class MaskRCNNWandbCallback(Callback):
         # download dataset if needed
         _ = AirbusDataset(data_dir=data_path)
 
+        self.data_path = data_path
         self.n_images_to_log = n_images_to_log  # number of logged images when eval
-
-        # self.four_first_preds = []
-        # self.four_first_targets = []
-        # self.four_first_batch = []
-        # self.four_first_image = []
-        # self.show_pred = []
-        # self.show_target = []
-
-        # self.batch_size = 1
-        # self.num_samples = 8
-        # self.num_batch = 0
+        self.NUM_IMAGE = n_images_to_log
 
         # self.df = pd.read_csv(os.path.join(data_path, "train_ship_segmentations_v2.csv"))
 
-        # self.transform = Compose(
-        #     [
-        #         A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        #         ToTensorV2(),
-        #     ]
-        # )
+        image_path = os.path.join(self.data_path, "train_v2", "03b48a9e.jpg")
+        self.sample_image = np.array(Image.open(image_path).convert("RGB"))
+
+        transform = Compose(
+            [
+                A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                ToTensorV2(),
+            ]
+        )
+
+        self.transformed_sample_image = transform(image=self.sample_image)['image']
+
+        # Code to try to fix CUDA out of memory issues
+        del transform
+        gc.collect()
+        torch.cuda.empty_cache()
 
         self.colors = [
             (0, 255, 0),
@@ -57,80 +58,26 @@ class MaskRCNNWandbCallback(Callback):
 
     def setup(self, trainer, pl_module, stage):
         self.logger = trainer.logger
+        
+    def on_train_epoch_end(self, trainer, pl_module):
+        output = trainer.model([self.transformed_sample_image])[0]
+        output_mask = np.array(
+                mergeMask(output['masks'].cpu().squeeze(1)[output['scores'].cpu() >= 0.5] >= 0.5)
+                )
+        log_image = mask_overlay(self.sample_image, output_mask)
+        for box in output['boxes'].cpu():
+            log_image = cv2.rectangle(log_image, 
+                                         (int(box[0]), int(box[1])), (int(box[2]), int(box[3])), 
+                                         (255, 0, 0), 1)
+        self.logger.log_image(
+            key="predicted",
+            images=[Image.fromarray(log_image)],
+        )
 
-    # def on_validation_batch_end(
-    #     self,
-    #     trainer: "pl.Trainer",
-    #     pl_module: "pl.LightningModule",
-    #     outputs,
-    #     batch: Any,
-    #     batch_idx: int,
-    #     dataloader_idx: int = 0,
-    # ) -> None:
-    #     preds = outputs["preds"]
-    #     targets = outputs["targets"]
-    #     self.batch_size = preds.shape[0]
-    #     self.num_batch = self.num_samples / self.batch_size
-
-    #     if len(self.four_first_batch) < self.num_batch:
-    #         self.four_first_batch.append(batch)
-
-    #     n = int(self.num_batch * self.batch_size)
-    #     self.four_first_preds.extend(preds[:n])
-    #     self.four_first_targets.extend(targets[:n])
-
-    # def on_validation_epoch_end(self, trainer: "pl.Trainer", pl_module: "pl.LightningModule"):
-
-    #     # chinh image ve (768, 768, 3)
-    #     for i, batch in enumerate(self.four_first_batch):
-    #         images = torch.split(batch[0], 1, dim=0)
-
-    #         for j in range(self.batch_size):
-    #             image = images[j]
-    #             image = denormalize(image)
-    #             image = image.squeeze()  # (3, 768, 768)
-    #             image = image.cpu().numpy()
-    #             image = (image * 255).astype(np.uint8)
-    #             image = np.transpose(image, (1, 2, 0))
-
-    #             pred = self.four_first_preds[i * self.batch_size + j]
-    #             pred = pred.unsqueeze(0)
-    #             pred = pred.cpu().numpy().astype(np.uint8)
-    #             log_pred = mask_overlay(image, pred)
-    #             log_pred = np.transpose(log_pred, (2, 0, 1))
-    #             log_pred = torch.from_numpy(log_pred)
-    #             self.show_pred.append(log_pred)
-
-    #             target = self.four_first_targets[i * self.batch_size + j]
-    #             target = target.unsqueeze(0)
-    #             target = target.cpu().numpy().astype(np.uint8)
-    #             log_target = mask_overlay(image, target)
-    #             log_target = np.transpose(log_target, (2, 0, 1))
-    #             log_target = torch.from_numpy(log_target)
-    #             self.show_target.append(log_target)
-
-    #     stack_pred = torch.stack(self.show_pred)
-    #     stack_target = torch.stack(self.show_target)
-
-    #     grid_pred = make_grid(stack_pred, nrow=4)
-    #     grid_target = make_grid(stack_target, nrow=4)
-
-    #     grid_pred_np = grid_pred.numpy().transpose(1, 2, 0)
-    #     grid_target_np = grid_target.numpy().transpose(1, 2, 0)
-
-    #     grid_pred_np = Image.fromarray(grid_pred_np)
-    #     grid_target_np = Image.fromarray(grid_target_np)
-
-    #     self.logger.log_image(key="predicted mask", images=[grid_pred_np, grid_target_np])
-
-    #     self.four_first_preds.clear()
-    #     self.four_first_targets.clear()
-    #     self.four_first_batch.clear()
-    #     self.four_first_image.clear()
-    #     self.show_pred.clear()
-    # self.show_target.clear()
-
-    def on_test_batch_end(
+    def on_validation_epoch_start(self, trainer, pl_module):
+        self.n_images_to_log = self.NUM_IMAGE
+        
+    def on_validation_batch_end(
         self,
         trainer: pl.Trainer,
         pl_module: pl.LightningModule,
@@ -148,7 +95,7 @@ class MaskRCNNWandbCallback(Callback):
         ids = []
         for b in batch:
             images.append(b[0])
-            ids.append(b[2])
+            ids.append(b[1]['image_id'])
         images = denormalize(torch.as_tensor(images, dtype=torch.uint8))
 
         def overlay(image, mask):
@@ -172,7 +119,9 @@ class MaskRCNNWandbCallback(Callback):
                 break
             # C, H, W -> H, W, C
             img = (img.permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
-            pred_masks = np.array(mergeMask(pred['masks'].cpu().squeeze()[pred['scores'] >= 0.5] >= 0.5))
+            pred_masks = np.array(
+                mergeMask(pred['masks'].cpu().squeeze(1)[pred['scores'].cpu() >= 0.5] >= 0.5)
+                )
 
             masks = np.array(target['masks'])
             target_mask = np.zeros((768, 768, 3), dtype=np.uint8)
@@ -185,6 +134,16 @@ class MaskRCNNWandbCallback(Callback):
 
             log_pred = mask_overlay(img, pred_masks)
             log_target = overlay(img, target_mask)
+
+            for box in pred['boxes'].cpu():
+                log_pred = cv2.rectangle(log_pred, 
+                                         (int(box[0]), int(box[1])), (int(box[2]), int(box[3])), 
+                                         (255, 0, 0), 1)
+            
+            for box in target['boxes'].cpu():
+                log_pred = cv2.rectangle(log_target, 
+                                         (int(box[0]), int(box[1])), (int(box[2]), int(box[3])), 
+                                         (255, 0, 0), 1)
 
             # Code to try to fix CUDA out of memory issues
             del masks
