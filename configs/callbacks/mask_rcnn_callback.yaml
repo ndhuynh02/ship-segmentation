@@ -1,4 +1,4 @@
 wandb_callback:
-  _target_: src.utils.callback.wandb.WandbCallback
+  _target_: src.utils.callback.mask_rcnn_wandb.MaskRCNNWandbCallback
   data_path: ${paths.data_dir}/airbus
-  n_images_to_log: 5
+  n_images_to_log: 1

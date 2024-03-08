@@ -3,8 +3,8 @@
 defaults:
   - _self_
   - data: airbus.yaml # choose datamodule with `test_dataloader()` for evaluation
-  - model: unet.yaml
-  - callbacks: airbus.yaml
+  - model: mask_rcnn.yaml
+  - callbacks: mask_rcnn_callback.yaml
   - logger: wandb
   - trainer: gpu.yaml
   - paths: default.yaml

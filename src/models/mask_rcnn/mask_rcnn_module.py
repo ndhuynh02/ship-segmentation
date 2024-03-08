@@ -96,7 +96,7 @@ class MaskRCNNLitModule(LightningModule):
 
         return loss, pred, y
 
-    def training_step(self, batch: Any, batch_idx: int):
+    def training_step(self, batch: Any, batch_idx: int, dataloader_idx=0):
         loss, preds, targets = self.model_step(batch)
         loss_total = sum(l for l in loss.values())
 
@@ -136,7 +136,7 @@ class MaskRCNNLitModule(LightningModule):
         # remember to always return loss from `training_step()` or backpropagation will fail!
         return {"loss": loss_total}
 
-    def validation_step(self, batch: Any, batch_idx: int):
+    def validation_step(self, batch: Any, batch_idx: int, dataloader_idx=0):
         loss, preds, targets = self.model_step(batch)
         loss_total = sum(l for l in loss.values())
 
@@ -191,7 +191,7 @@ class MaskRCNNLitModule(LightningModule):
         self.log("val/dice_best", self.val_dice_best.compute(), prog_bar=True)
         self.log("val/box_iou_best", self.val_box_iou_best.compute(), prog_bar=True)
 
-    def test_step(self, batch: Any, batch_idx: int):
+    def test_step(self, batch: Any, batch_idx: int, dataloader_idx=0):
         loss, preds, targets = self.model_step(batch)
         loss_total = sum(l for l in loss.values())
 

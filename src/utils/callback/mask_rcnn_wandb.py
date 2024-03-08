@@ -30,7 +30,7 @@ class MaskRCNNWandbCallback(Callback):
 
         # self.df = pd.read_csv(os.path.join(data_path, "train_ship_segmentations_v2.csv"))
 
-        image_path = os.path.join(self.data_path, "train_v2", "03b48a9e.jpg")
+        image_path = os.path.join(self.data_path, "train_v2", "0006c52e8.jpg")
         self.sample_image = np.array(Image.open(image_path).convert("RGB"))
 
         transform = Compose(
