@@ -60,6 +60,8 @@ class MaskRCNNWandbCallback(Callback):
         self.logger = trainer.logger
         
     def on_train_epoch_end(self, trainer, pl_module):
+        self.process = "train"
+
         output = trainer.model([self.transformed_sample_image])[0]
         output_mask = np.array(
                 mergeMask(output['masks'].cpu().squeeze(1)[output['scores'].cpu() >= 0.5] >= 0.5)
@@ -70,12 +72,13 @@ class MaskRCNNWandbCallback(Callback):
                                          (int(box[0]), int(box[1])), (int(box[2]), int(box[3])), 
                                          (255, 0, 0), 1)
         self.logger.log_image(
-            key="train prediction",
+            key="{} prediction".format(self.process),
             images=[Image.fromarray(log_image)],
         )
 
     def on_validation_epoch_start(self, trainer, pl_module):
         self.n_images_to_log = self.NUM_IMAGE
+        self.process = "validation"
         
     def on_validation_batch_end(
         self,
@@ -85,6 +88,7 @@ class MaskRCNNWandbCallback(Callback):
         batch: Any,
         batch_idx: int,
     ) -> None:
+        
         if self.n_images_to_log <= 0:
             return
 
@@ -150,7 +154,7 @@ class MaskRCNNWandbCallback(Callback):
             torch.cuda.empty_cache()
 
             self.logger.log_image(
-                key="validation prediction",
+                key="{} prediction".format(self.process),
                 images=[
                     Image.fromarray(img),
                     Image.fromarray(log_pred),
@@ -160,3 +164,15 @@ class MaskRCNNWandbCallback(Callback):
             )
 
             self.n_images_to_log -= 1
+
+    def on_test_batch_end(
+            self, 
+            trainer: pl.Trainer,
+            pl_module: pl.LightningModule, 
+            outputs, 
+            batch: Any, 
+            batch_idx: int) -> None:
+        # log 1 image for each batch
+        self.n_images_to_log = self.NUM_IMAGE
+        self.process = "test"
+        self.on_validation_batch_end(trainer, pl_module, outputs, batch, batch_idx)
