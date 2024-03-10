@@ -16,8 +16,13 @@ class MaskRCNNAirbus(Dataset):
         super().__init__()
 
         self.dataset = dataset
-        self.bbox_format = dataset.dataset.bbox_format
-        self.rotated_bbox = dataset.dataset.rotated_bbox
+
+        try:    
+            self.bbox_format = dataset.bbox_format
+            self.rotated_bbox = dataset.rotated_bbox
+        except:
+            self.bbox_format = dataset.dataset.bbox_format
+            self.rotated_bbox = dataset.dataset.rotated_bbox
 
         if transform is not None:
             self.transform = transform
