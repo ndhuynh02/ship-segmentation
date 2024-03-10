@@ -53,14 +53,13 @@ class MaskRCNNAirbus(Dataset):
         image, target = self.dataset[index]
         masks = target['masks']      # (num_object, 768, 768)
         bboxes = target['boxes']
-        labels = target['labels']
-
+        
         # there are no object in the image
         # -> transform only the image
         if len(bboxes) == 0:
             image = self.image_transform(image)['image']
-            target['boxes'] = torch.as_tensor(bboxes , dtype = torch.float32)
-            target['labels'] = torch.as_tensor(labels , dtype = torch.int64)
+            target['boxes'] = torch.rand((0, 4), dtype = torch.float32)
+            target['labels'] = torch.ones(0, dtype=torch.int64)
             target['masks'] = torch.as_tensor(masks, dtype=torch.uint8)
             
             return image, target
@@ -80,6 +79,7 @@ class MaskRCNNAirbus(Dataset):
         else:   # not rotated
             if self.dataset.bbox_format == "corners":
                 transformed = self.transform(image=image, masks=masks, bboxes=bboxes)
+                bboxes = np.array(transformed['bboxes'])
             if self.dataset.bbox_format == "midpoint":
                 bboxes = midpoint2corners(bboxes)
                 transformed = self.transform(image=image, masks=masks, bboxes=bboxes)
@@ -88,8 +88,12 @@ class MaskRCNNAirbus(Dataset):
         image = transformed['image']
         masks = transformed['masks']
 
-        target['boxes'] = torch.as_tensor(bboxes , dtype = torch.float32)
-        target['labels'] = torch.as_tensor(labels , dtype = torch.int64)
+        # after transform, some boxes may disappear
+        if len(bboxes) == 0:
+            target['boxes'] = torch.rand((0, 4), dtype = torch.float32)
+        else:
+            target['boxes'] = torch.as_tensor(bboxes, dtype=torch.float32)
+        target['labels'] = torch.ones(len(bboxes), dtype=torch.int64)
         # for some reasons, this can't be directly converted to torch.Tensor
         # it is needed to be numpy.narray 1st, then torch.Tensor
         target['masks'] = torch.as_tensor(np.array(masks), dtype=torch.uint8)

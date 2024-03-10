@@ -44,6 +44,7 @@ class AirbusDataset(Dataset):
 
         # undersample non-ship images
         if undersample == -1:
+            print("Dropping all images containing no ships")
             self.dataframe = masks.dropna(subset=["EncodedPixels"])  # Drop all non-ship images
         elif undersample > 0:
             self.dataframe = masks.drop(
@@ -90,12 +91,11 @@ class AirbusDataset(Dataset):
         image = Image.open(image).convert("RGB")
         masks, bboxes = masks_as_image(mask, self.bbox_format, self.rotated_bbox)
             
-        target = {}
-
-        target["boxes"] = bboxes
-        target["labels"] = np.ones((len(bboxes),))
-        target["masks"] = masks
-        target["image_id"] = file_id
+        target = {
+            'boxes': bboxes,
+            'masks': masks,
+            'image_id': file_id
+        }
 
         return np.array(image, dtype=np.uint8), target
 
