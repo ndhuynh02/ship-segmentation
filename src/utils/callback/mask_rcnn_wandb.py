@@ -70,7 +70,7 @@ class MaskRCNNWandbCallback(Callback):
                                          (int(box[0]), int(box[1])), (int(box[2]), int(box[3])), 
                                          (255, 0, 0), 1)
         self.logger.log_image(
-            key="predicted",
+            key="train prediction",
             images=[Image.fromarray(log_image)],
         )
 
@@ -84,7 +84,6 @@ class MaskRCNNWandbCallback(Callback):
         outputs,
         batch: Any,
         batch_idx: int,
-        dataloader_idx: int,
     ) -> None:
         if self.n_images_to_log <= 0:
             return
@@ -94,9 +93,9 @@ class MaskRCNNWandbCallback(Callback):
         images = []
         ids = []
         for b in batch:
-            images.append(b[0])
+            images.append(b[0].cpu().tolist())
             ids.append(b[1]['image_id'])
-        images = denormalize(torch.as_tensor(images, dtype=torch.uint8))
+        images = denormalize(torch.Tensor(images))
 
         def overlay(image, mask):
             """Helper function to visualize mask on the top of the image."""
@@ -123,7 +122,7 @@ class MaskRCNNWandbCallback(Callback):
                 mergeMask(pred['masks'].cpu().squeeze(1)[pred['scores'].cpu() >= 0.5] >= 0.5)
                 )
 
-            masks = np.array(target['masks'])
+            masks = np.array(target['masks'].cpu())
             target_mask = np.zeros((768, 768, 3), dtype=np.uint8)
             i = 0
             for mask in masks:
@@ -141,19 +140,17 @@ class MaskRCNNWandbCallback(Callback):
                                          (255, 0, 0), 1)
             
             for box in target['boxes'].cpu():
-                log_pred = cv2.rectangle(log_target, 
+                log_target = cv2.rectangle(log_target, 
                                          (int(box[0]), int(box[1])), (int(box[2]), int(box[3])), 
                                          (255, 0, 0), 1)
 
             # Code to try to fix CUDA out of memory issues
-            del masks
-            del target
-            del pred
+            del masks, target, pred
             gc.collect()
             torch.cuda.empty_cache()
 
             self.logger.log_image(
-                key="Sample",
+                key="validation prediction",
                 images=[
                     Image.fromarray(img),
                     Image.fromarray(log_pred),

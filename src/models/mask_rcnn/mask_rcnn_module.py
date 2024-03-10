@@ -77,7 +77,7 @@ class MaskRCNNLitModule(LightningModule):
         self.val_box_iou_best.reset()
 
     def forward(self, x):
-        return self.net(x, is_training=False)
+        return self.net(x=x, is_training=False)
 
     def model_step(self, batch: Any):
         x, y = [], []
@@ -86,7 +86,7 @@ class MaskRCNNLitModule(LightningModule):
             target = {k: v for k, v in b[1].items()}
             y.append(target)
 
-        pred = self.net(x, y, is_training=False)
+        pred = self.net(x, is_training=False)
         loss = self.net(x, y, is_training=True)
         
         # Code to try to fix CUDA out of memory issues
@@ -96,7 +96,7 @@ class MaskRCNNLitModule(LightningModule):
 
         return loss, pred, y
 
-    def training_step(self, batch: Any, batch_idx: int, dataloader_idx=0):
+    def training_step(self, batch: Any, batch_idx: int):
         loss, preds, targets = self.model_step(batch)
         loss_total = sum(l for l in loss.values())
 
@@ -136,7 +136,7 @@ class MaskRCNNLitModule(LightningModule):
         # remember to always return loss from `training_step()` or backpropagation will fail!
         return {"loss": loss_total}
 
-    def validation_step(self, batch: Any, batch_idx: int, dataloader_idx=0):
+    def validation_step(self, batch: Any, batch_idx: int):
         loss, preds, targets = self.model_step(batch)
         loss_total = sum(l for l in loss.values())
 
@@ -191,7 +191,7 @@ class MaskRCNNLitModule(LightningModule):
         self.log("val/dice_best", self.val_dice_best.compute(), prog_bar=True)
         self.log("val/box_iou_best", self.val_box_iou_best.compute(), prog_bar=True)
 
-    def test_step(self, batch: Any, batch_idx: int, dataloader_idx=0):
+    def test_step(self, batch: Any, batch_idx: int):
         loss, preds, targets = self.model_step(batch)
         loss_total = sum(l for l in loss.values())
 
