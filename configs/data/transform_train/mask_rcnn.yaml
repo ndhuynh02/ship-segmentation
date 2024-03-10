@@ -22,10 +22,6 @@ transforms:
     p: 0.5
   - _target_: albumentations.RandomBrightnessContrast
     p: 0.3
-  - _target_: albumentations.RandomFog
-    p: 0.1
-  - _target_: albumentations.RandomSnow
-    p: 0.1
   - _target_: albumentations.Resize
     height: 768
     width: 768
