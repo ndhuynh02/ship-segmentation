@@ -130,7 +130,7 @@ class AirbusDataModule(LightningDataModule):
             # self.data_test = TransformAirbus(self.data_test, self.hparams.transform_val)
             self.data_train = MaskRCNNAirbus(self.data_train.dataset, self.hparams.transform_train)
             self.data_val = MaskRCNNAirbus(self.data_val.dataset, self.hparams.transform_val)
-            self.data_test = MaskRCNNAirbus(self.data_test.dataset, self.hparams.transform_val)
+            self.data_test = MaskRCNNAirbus(self.data_test.dataset)
             
     # visualize distribution of train, val & test
     def visualize_dist(self, masks, train_ids, val_ids, test_ids):
