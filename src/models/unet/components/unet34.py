@@ -94,12 +94,12 @@ class Unet34(torch.nn.Module):
     def forward(self, x):
         encoder_output = self.sfs(x)
         x = F.relu(encoder_output[-1])
-        x = self.up1(x, encoder_output[3])
-        x = self.up2(x, encoder_output[2])
-        x = self.up3(x, encoder_output[1])
-        x = self.up4(x, encoder_output[0])
-        x = self.up5(x)
-        return x
+        x1 = self.up1(x, encoder_output[3])
+        x2 = self.up2(x1, encoder_output[2])
+        x3 = self.up3(x2, encoder_output[1])
+        x4 = self.up4(x3, encoder_output[0])
+        x5 = self.up5(x4)
+        return x1, x2, x3, x4, x5
 
 
 if __name__ == "__main__":
@@ -107,11 +107,10 @@ if __name__ == "__main__":
 
     rn34 = resnet34(weights=ResNet34_Weights.DEFAULT)
     rn34_feature_extractor = torch.nn.Sequential(*list(rn34.children())[:-2])
-    model = Resnet(rn34_feature_extractor)
+    model = Unet34()
 
     output = model(x)
-
-    print(x.shape)
+    
     for out in output:
         print(out.shape)
 

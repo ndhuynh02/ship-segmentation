@@ -15,22 +15,7 @@ from torchvision.models import (
 
 from src.models.unet.resnet_module import ResNetLitModule
 from src.models.unet.components.resnet34 import ResNet34_Binary
-
-
-class Resnet(torch.nn.Module):
-    def __init__(self, sequence: torch.nn.Sequential) -> None:
-        super().__init__()
-        self.net = sequence
-
-    def forward(self, x):
-        output = []
-        for i, layer in enumerate(self.net):
-            x = layer(x)
-            if i in [2, 4, 5, 6]:
-                output.append(x)
-        output.append(x)
-
-        return output
+from src.models.unet.components.unet34 import Resnet
 
 
 class UNet_Up_Block(torch.nn.Module):
@@ -105,19 +90,21 @@ class Unet34(torch.nn.Module):
     def forward(self, x):
         encoder_output = self.sfs(x)
         x = F.relu(encoder_output[-1])
-        x = self.up1(x, encoder_output[3])
-        x = self.up2(x, encoder_output[2])
-        x = self.up3(x, encoder_output[1])
-        x = self.up4(x, encoder_output[0])
-        x = self.up5(x)
+        x1 = self.up1(x, encoder_output[3])
+        x2 = self.up2(x1, encoder_output[2])
+        x3 = self.up3(x2, encoder_output[1])
+        x4 = self.up4(x3, encoder_output[0])
+        x5 = self.up5(x4)
         # x = self.up6(x)
-        return x
+        return x1, x2, x3, x4, x5
 
 
 if __name__ == "__main__":
     x = torch.rand((1, 3, 768, 768))
     model = Unet34()
-    print(model(x).shape)
+    output = model(x)
+    for out in output:
+        print(out.shape)
     # print(model(x).min())  # 'torch.Size([1, 1, 256, 256])
     # print(model(x).max())
 

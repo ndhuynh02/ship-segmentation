@@ -61,7 +61,7 @@ class UNetLitModule(LightningModule):
         self.val_metric_best_2 = MaxMetric()
 
     def forward(self, x: torch.Tensor):
-        return self.net(x)
+        return self.net(x)[-1]
 
     def on_train_start(self):
         # by default lightning executes validation step sanity checks before training starts,
