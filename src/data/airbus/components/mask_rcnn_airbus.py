@@ -16,11 +16,13 @@ class MaskRCNNAirbus(Dataset):
         super().__init__()
 
         self.dataset = dataset
+        self.bbox_format = dataset.dataset.bbox_format
+        self.rotated_bbox = dataset.dataset.rotated_bbox
 
         if transform is not None:
             self.transform = transform
         else:
-            if self.dataset.rotated_bbox:
+            if self.rotated_bbox:
                 # if bounding boxes are rotated, the only way to to use keypoint transformation
                 self.transform = Compose(
                     [
@@ -64,23 +66,23 @@ class MaskRCNNAirbus(Dataset):
             
             return image, target
 
-        if self.dataset.rotated_bbox:
+        if self.rotated_bbox:
             # midpoint: x_mid, y_mid, width, height, angle
             # corners: [[x1, y1], [x2, y2], [x3, y3], [x4, y4]]
-            if self.dataset.bbox_format == "midpoint":
+            if self.bbox_format == "midpoint":
                 
                 bboxes = midpoint2corners(bboxes, self.dataset.rotated_bbox)
                 transformed = self.transform(image=image, masks=masks, keypoints=bboxes.reshape(-1, 2))
                 bboxes = corners2midpoint(np.array(transformed['keypoints']).reshape(-1, 4, 2), self.dataset.rotated_bbox)
             
-            if self.dataset.bbox_format == "corners":
+            if self.bbox_format == "corners":
                 transformed = self.transform(image=image, masks=masks, keypoints=bboxes.reshape(-1, 2))
                 bboxes = np.array(transformed['keypoints']).reshape(-1, 4, 2)   # there are 4 corners for each object
         else:   # not rotated
-            if self.dataset.bbox_format == "corners":
+            if self.bbox_format == "corners":
                 transformed = self.transform(image=image, masks=masks, bboxes=bboxes)
                 bboxes = np.array(transformed['bboxes'])
-            if self.dataset.bbox_format == "midpoint":
+            if self.bbox_format == "midpoint":
                 bboxes = midpoint2corners(bboxes)
                 transformed = self.transform(image=image, masks=masks, bboxes=bboxes)
                 bboxes = corners2midpoint(np.array(transformed['bboxes']))
