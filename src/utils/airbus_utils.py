@@ -190,7 +190,7 @@ def imshow(image, masks=None, bboxes=None, bbox_format="corners", rotated_bbox=F
     del img, bounding_boxes
 
 
-def denormalize(x, bboxes, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]) -> torch.Tensor:
+def denormalize(x, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]) -> torch.Tensor:
     # denorm bboxes
     # normalized (x_mid, y_mid, width, height) -> denormalized (x_min, y_min, x_max, y_max)
     # bboxes.shape = (Batch_size, Number_of_objects, 4)
@@ -203,7 +203,7 @@ def denormalize(x, bboxes, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
     for t, m, s in zip(ten, mean, std):
         t.mul_(s).add_(m)
     # B, 3, H, W
-    return torch.clamp(ten, 0, 1).permute(3, 0, 1, 2), bboxes
+    return torch.clamp(ten, 0, 1).permute(3, 0, 1, 2)
 
 
 def imshow_batch(images, masks=None, bboxes=None, grid_shape=(8, 8)):
