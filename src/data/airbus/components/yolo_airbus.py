@@ -14,17 +14,25 @@ from src.utils.airbus_utils import corners2midpoint, midpoint2corners, mergeMask
 class YOLOAirbus(Dataset):
     def __init__(self, dataset: AirbusDataset, transform: Optional[Compose] = None, 
                  is_anchor=False,
-                 scales = [96, 192, 384]) -> None:
+                 scales = [48, 96, 192]) -> None:
+        # protential scales: 36, 48, 96, 192, 384, 768
+        # from 96, there are no overlaped ships
         super().__init__()
         assert dataset.bbox_format == "midpoint", "bounding box format has to be 'midpoint'"
 
         self.dataset = dataset
+        try:    
+            self.bbox_format = dataset.bbox_format
+            self.rotated_bbox = dataset.rotated_bbox
+        except:
+            self.bbox_format = dataset.dataset.bbox_format
+            self.rotated_bbox = dataset.dataset.rotated_bbox
         self.scales = scales
 
         if transform is not None:
             self.transform = transform
         else:
-            if self.dataset.rotated_bbox:
+            if self.rotated_bbox:
                 # if bounding boxes are rotated, the only way to to use keypoint transformation
                 self.transform = Compose(
                     [
@@ -41,40 +49,42 @@ class YOLOAirbus(Dataset):
                     ],
                     bbox_params=A.BboxParams(format='yolo', label_fields=[])
                 )
-        # self.image_transform = Compose(
-        #         [
-        #             A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        #             ToTensorV2(),
-        #         ]
-        #     )
+        self.image_transform = Compose(
+                [
+                    A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                    ToTensorV2(),
+                ]
+            )
 
     def __len__(self):
         return len(self.dataset)
 
     def __getitem__(self, index) -> Any:
-        image, target, file_id = self.dataset[index]
+        image, target = self.dataset[index]
         masks = target['masks']      # (num_object, 768, 768)
         bboxes = target['boxes']
-        # labels = target['labels']
+        file_id = target['image_id']
 
         h, w = image.shape[:2]
+        # if rotated, angle is included
+        num_output_elements = 6 if self.dataset.rotated_bbox else 5
 
         # there are no object in the image
         # -> transform only the image
-        # if len(bboxes) == 0:
-        #     image = self.image_transform(image)['image']
-        #     target['boxes'] = torch.as_tensor(bboxes , dtype = torch.float32)
-        #     target['labels'] = torch.as_tensor(labels , dtype = torch.int64)
-        #     target['masks'] = torch.as_tensor(masks, dtype=torch.uint8)
+        if len(bboxes) == 0:
+            image = self.image_transform(image)['image']
+            mask = torch.zeros((768, 768), dtype=torch.uint8)
+            bbox_targets = [torch.zeros((scale, scale, num_output_elements)) for scale in self.scales]
             
-        #     return image, target, file_id
+            return image, mask, bbox_targets, file_id
 
-        if self.dataset.rotated_bbox:
+        if self.rotated_bbox:
+            # x_mid, y_mid, width, height, alpha -> 4 corners
             bboxes = midpoint2corners(bboxes, self.dataset.rotated_bbox)
             # 'xy' keypoint transform
             transformed = self.transform(image=image, masks=masks, keypoints=bboxes.reshape(-1, 2))
-            bboxes = corners2midpoint(np.array(transformed['keypoints']).reshape(-1, 4, 2), self.dataset.rotated_bbox)
-            bboxes /= np.array([w, h, w, h, 1])    # normalize except the angle
+            bboxes = corners2midpoint(np.array(transformed['keypoints']).reshape(-1, 4, 2).round().astype(int), self.dataset.rotated_bbox)
+            bboxes /= np.array([w, h, w, h, 90])    # normalize
         else:   # not rotated
             bboxes /= np.array([w, h, w, h])
             # 'yolo' bounding box transform
@@ -82,20 +92,17 @@ class YOLOAirbus(Dataset):
             bboxes = np.array(transformed['bboxes'])
 
         image = transformed['image']
-        mask = mergeMask(transformed['masks'])     # merge to perform semantic segmentation
+        mask = mergeMask(np.array(transformed['masks'], dtype=np.uint8))     # merge to perform semantic segmentation
 
-        if self.dataset.rotated_bbox:
-            # is_object, x_mid, y_mid, width, height, alpha
-            bbox_targets = [torch.zeros((scale, scale, 6)) for scale in self.scales]
-        else:
-            # is_object, x_mid, y_mid, width, height
-            bbox_targets = [torch.zeros((scale, scale, 5)) for scale in self.scales]
+        bbox_targets = [torch.zeros((scale, scale, num_output_elements)) for scale in self.scales]
         
+        # shuffle the bounding boxes
+        # np.random.shuffle(bboxes)
         for box in bboxes:
             x, y, width, height = box[:4]    # all elements are normalized
             for scale_idx, scale in enumerate(self.scales):
                 i, j = int(scale * y), int(scale * x)   # find the cell contains midpoint
-                bbox_targets[scale_idx][i, j, 0] = 1
+                bbox_targets[scale_idx][i, j, 0] = 1    # is_object=True
                 x_cell, y_cell = scale * x - j, scale * y - i  # find the midpoint offset, both between [0,1]
                 width_cell, height_cell = (
                         width * scale,
@@ -107,7 +114,7 @@ class YOLOAirbus(Dataset):
 
                 bbox_targets[scale_idx][i, j, 1:] = box_coordinates
 
-        return image, mask, bboxes, file_id
+        return image, mask, bbox_targets, file_id
 
 
 if __name__ == "__main__":
