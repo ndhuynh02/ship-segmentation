@@ -62,7 +62,7 @@ class MaskRCNNWandbCallback(Callback):
     def on_train_epoch_end(self, trainer, pl_module):
         self.process = "train"
 
-        output = trainer.model([self.transformed_sample_image])[0]
+        output = trainer.model([self.transformed_sample_image.to(trainer.model.device)])[0]
         output_mask = np.array(
                 mergeMask(output['masks'].cpu().squeeze(1)[output['scores'].cpu() >= 0.5] >= 0.5)
                 )
