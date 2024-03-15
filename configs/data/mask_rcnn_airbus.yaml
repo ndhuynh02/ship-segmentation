@@ -1,8 +1,8 @@
-_target_: src.data.airbus.airbus_datamodule.AirbusDataModule
+_target_: src.data.airbus.maskrcnn_airbus_datamodule.MaskRCNNAirbusDataModule
 
 defaults:
-  - transform_train: default.yaml
-  - transform_val: default.yaml
+  - transform_train: mask_rcnn.yaml
+  - transform_val: mask_rcnn.yaml
 
 data_dir: ${paths.data_dir}/airbus
 batch_size: 4
@@ -11,3 +11,5 @@ num_workers: 0
 pin_memory: False
 undersample: -1 # number of non-ship images to remove, set to -1 to drop all non-ship images, 0 to keep everything
 subset: 0 # set to 0 to use all data
+bbox_format: "corners"
+rotated_bbox: False
