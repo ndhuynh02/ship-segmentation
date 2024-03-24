@@ -3,13 +3,15 @@ from typing import Any, List
 
 import torch
 from pytorch_lightning import LightningModule
-from torchmetrics import Dice, JaccardIndex, MaxMetric, MeanMetric
+from torchmetrics import JaccardIndex, MaxMetric, MeanMetric
 
 from src.models.loss_function.lossbinary import LossBinary
 from src.models.loss_function.lovasz_loss import BCE_Lovasz
+from src.models.yolo.components.metricX import IoU
+from src.models.yolo.components.lossX import YoloXLoss
 
 
-class UNetLitModule(LightningModule):
+class YoloXLitModule(LightningModule):
     """Example of LightningModule for MNIST classification.
 
     A LightningModule organizes your PyTorch code into 6 sections:
@@ -30,7 +32,7 @@ class UNetLitModule(LightningModule):
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
         criterion_segment: torch.nn.Module,
-        criteion_detect: torch.nn.Module
+        criterion_detect: torch.nn.Module
     ):
         super().__init__()
 
@@ -42,16 +44,17 @@ class UNetLitModule(LightningModule):
 
         # loss function
         self.criterion_segment = criterion_segment
-        self.criterion_detect = criteion_detect
+        self.criterion_detect = criterion_detect
 
         # metric objects for calculating and averaging accuracy across batches
-        self.train_jaccard= JaccardIndex(task="binary", num_classes=2)
+        self.train_jaccard = JaccardIndex(task="binary", num_classes=2)
         self.val_jaccard = JaccardIndex(task="binary", num_classes=2)
         self.test_jaccard = JaccardIndex(task="binary", num_classes=2)
 
-        self.train_dice = Dice()
-        self.val_dice = Dice()
-        self.test_dice = Dice()
+        # metric for object detection
+        self.train_iou = IoU()
+        self.val_iou = IoU()
+        self.test_iou = IoU()
 
         # for averaging loss across batches
         self.train_loss = MeanMetric()
@@ -60,7 +63,7 @@ class UNetLitModule(LightningModule):
 
         # for tracking best so far validation accuracy
         self.val_best_jaccard = MaxMetric()
-        self.val_best_dice = MaxMetric()
+        self.val_best_iou = MaxMetric()
 
     def forward(self, x: torch.Tensor):
         return self.net(x)
@@ -70,14 +73,14 @@ class UNetLitModule(LightningModule):
         # so it's worth to make sure validation metrics don't store results from these checks
         self.val_loss.reset()
         self.val_jaccard.reset()
-        self.val_dice.reset()
+        self.val_iou.reset()
         self.val_best_jaccard.reset()
-        self.val_best_dice.reset()
+        self.val_best_iou.reset()
 
     def model_step(self, batch: Any):
         x, y_mask, y_boxes = batch[0], batch[1], batch[2]
 
-        if isinstance(self.criterion, (LossBinary, BCE_Lovasz)):
+        if isinstance(self.criterion_segment, (LossBinary, BCE_Lovasz)):
             cnt1 = (y_mask == 1).sum().item()  # count number of class 1 in image
             cnt0 = y_mask.numel() - cnt1
             if cnt1 != 0:
@@ -85,15 +88,34 @@ class UNetLitModule(LightningModule):
             else:
                 BCE_pos_weight = torch.FloatTensor([1.0]).to(device=self.device)
 
-            del cnt1, cnt1
+            del cnt0, cnt1
             gc.collect()
             torch.cuda.empty_cache()
 
             self.criterion_segment.update_pos_weight(pos_weight=BCE_pos_weight)
+        
+        if isinstance(self.criterion_detect, YoloXLoss):
+            cnt1 = (y_boxes[-1][..., 0] == 1).sum().item()  # count number of objects in image
+            cnt0 = y_boxes[-1][..., 0].numel() - cnt1
+            if cnt1 != 0:
+                BCE_pos_weight = torch.FloatTensor([1.0 * cnt0 / cnt1]).to(device=self.device)
+            else:
+                BCE_pos_weight = torch.FloatTensor([1.0]).to(device=self.device)
+
+            del cnt0, cnt1
+            gc.collect()
+            torch.cuda.empty_cache()
+
+            self.criterion_detect.update_pos_weight(pos_weight=BCE_pos_weight)
 
         pred_boxes, pred_mask = self.forward(x)
         loss_segment = self.criterion_segment(pred_mask, y_mask)
-        loss_detect = self.criterion_detect(pred_boxes, y_boxes)
+
+        loss_detect = 0
+        for p_b, t_b in zip(pred_boxes, y_boxes):
+            p_b = p_b.permute(0, 2, 3, 1)
+            loss_detect += self.criterion_detect(p_b, t_b)
+        loss_detect /= len(pred_boxes)
 
         # Code to try to fix CUDA out of memory issues
         del x
@@ -108,7 +130,9 @@ class UNetLitModule(LightningModule):
         # update and log metrics
         self.train_loss(loss)
         self.train_jaccard(pred_mask, target_mask)
-        self.train_dice(pred_mask, target_mask.int())
+        for p_b, t_b in zip(pred_boxes, target_boxes):
+            p_b = p_b.permute(0, 2, 3, 1)
+            self.train_iou(p_b, t_b)
 
         # Code to try to fix CUDA out of memory issues
         del pred_mask, target_mask, pred_boxes, target_boxes
@@ -117,7 +141,7 @@ class UNetLitModule(LightningModule):
 
         self.log("train/loss", self.train_loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log("train/jaccard", self.train_jaccard, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("train/dice", self.train_dice, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("train/box_iou", self.train_iou, on_step=False, on_epoch=True, prog_bar=True)
 
         # we can return here dict with any tensors
         # and then read it in some callback or in `training_epoch_end()` below
@@ -130,7 +154,9 @@ class UNetLitModule(LightningModule):
         # update and log metrics
         self.val_loss(loss)
         self.val_jaccard(pred_mask, target_mask)
-        self.val_dice(pred_mask, target_mask.int())
+        for p_b, t_b in zip(pred_boxes, target_boxes):
+            p_b = p_b.permute(0, 2, 3, 1)
+            self.val_iou(p_b, t_b)
 
         self.log("val/loss", self.val_loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log(
@@ -141,8 +167,8 @@ class UNetLitModule(LightningModule):
             prog_bar=True,
         )
         self.log(
-            "val/dice",
-            self.val_dice,
+            "val/box_iou",
+            self.val_iou,
             on_step=False,
             on_epoch=True,
             prog_bar=True,
@@ -155,20 +181,20 @@ class UNetLitModule(LightningModule):
     def on_validation_epoch_end(self):
         # get current val acc
         jaccard = self.val_jaccard.compute()
-        dice = self.val_dice.compute()
+        iou = self.val_iou.compute()
         # update best so far val acc
         self.val_best_jaccard(jaccard)
-        self.val_best_dice(dice)
+        self.val_best_iou(iou)
 
         # Code to try to fix CUDA out of memory issues
-        del jaccard, dice
+        del jaccard, iou
         gc.collect()
         torch.cuda.empty_cache()
 
         # log `val_acc_best` as a value through `.compute()` method, instead of as a metric object
         # otherwise metric would be reset by lightning after each epoch
         self.log("val/jaccard_best", self.val_best_jaccard.compute(), prog_bar=True)
-        self.log("val/dice_best", self.val_best_dice.compute(), prog_bar=True)
+        self.log("val/iou_best", self.val_best_iou.compute(), prog_bar=True)
 
     def test_step(self, batch: Any, batch_idx: int):
         loss, pred_boxes, pred_mask, target_boxes, target_mask = self.model_step(batch)
@@ -177,11 +203,13 @@ class UNetLitModule(LightningModule):
         # update and log metrics
         self.test_loss(loss)
         self.test_jaccard(pred_mask, target_mask)
-        self.test_dice(pred_mask, target_mask.int())
+        for p_b, t_b in zip(pred_boxes, target_boxes):
+            p_b = p_b.permute(0, 2, 3, 1)
+            self.test_iou(p_b, t_b)
 
         self.log("test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log("test/jaccard", self.test_jaccard, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("test/dice", self.test_dice, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("test/iou", self.test_iou, on_step=False, on_epoch=True, prog_bar=True)
 
         return {"loss": loss, 
                 "pred_boxes": pred_boxes, "pred_mask": pred_mask,
