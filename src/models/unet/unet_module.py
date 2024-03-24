@@ -83,7 +83,7 @@ class UNetLitModule(LightningModule):
             else:
                 BCE_pos_weight = torch.FloatTensor([1.0]).to(device=self.device)
 
-            del cnt1, cnt1
+            del cnt0, cnt1
             gc.collect()
             torch.cuda.empty_cache()
 
