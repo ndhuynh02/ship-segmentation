@@ -1,0 +1,27 @@
+_target_: albumentations.Compose
+
+keypoint_params: 
+  _target_: albumentations.KeypointParams
+  format: "xy"
+  label_fields: []
+  remove_invisible: False
+
+transforms:
+  - _target_: albumentations.Flip
+    p: 0.5
+  - _target_: albumentations.RandomRotate90 
+    p: 0.5
+  - _target_: albumentations.RGBShift
+    r_shift_limit: 15
+    g_shift_limit: 15
+    b_shift_limit: 15
+    p: 0.5
+  - _target_: albumentations.RandomBrightnessContrast
+    p: 0.3
+  - _target_: albumentations.Resize
+    height: 768
+    width: 768
+  - _target_: albumentations.Normalize
+    mean: [0.485, 0.456, 0.406]
+    std: [0.229, 0.224, 0.225]
+  - _target_: albumentations.pytorch.transforms.ToTensorV2

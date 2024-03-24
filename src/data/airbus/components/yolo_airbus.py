@@ -11,15 +11,22 @@ import numpy as np
 
 from src.utils.airbus_utils import corners2midpoint, midpoint2corners, mergeMask
 
-class YOLOAirbus(Dataset):
-    def __init__(self, dataset: AirbusDataset, transform: Optional[Compose] = None, 
-                 is_anchor=False,
-                 scales = [48, 96, 192]) -> None:
+scales = [48, 96, 192]
+stride2shape = {
+    1: 768,
+    2: 384,
+    4: 192, 
+    8: 96,
+    16: 48,
+    32: 24
+}
+
+class YoloAirbus(Dataset):
+    def __init__(self, dataset: AirbusDataset, transform: Optional[Compose] = None) -> None:
         # protential scales: 36, 48, 96, 192, 384, 768
         # from 96, there are no overlaped ships
         super().__init__()
-        assert dataset.bbox_format == "midpoint", "bounding box format has to be 'midpoint'"
-
+        
         self.dataset = dataset
         try:    
             self.bbox_format = dataset.bbox_format
@@ -27,6 +34,8 @@ class YOLOAirbus(Dataset):
         except:
             self.bbox_format = dataset.dataset.bbox_format
             self.rotated_bbox = dataset.dataset.rotated_bbox
+
+        assert self.bbox_format == "midpoint", "bounding box format has to be 'midpoint'"
         self.scales = scales
 
         if transform is not None:
@@ -39,7 +48,7 @@ class YOLOAirbus(Dataset):
                         A.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                         ToTensorV2(),
                     ],
-                    keypoint_params=A.KeypointParams(format='xy', label_fields=[])
+                    keypoint_params=A.KeypointParams(format='xy', label_fields=[], remove_invisible=False)
                 )
             else:
                 self.transform = Compose(
@@ -67,7 +76,7 @@ class YOLOAirbus(Dataset):
 
         h, w = image.shape[:2]
         # if rotated, angle is included
-        num_output_elements = 6 if self.dataset.rotated_bbox else 5
+        num_output_elements = 6 if self.rotated_bbox else 5
 
         # there are no object in the image
         # -> transform only the image
@@ -80,11 +89,11 @@ class YOLOAirbus(Dataset):
 
         if self.rotated_bbox:
             # x_mid, y_mid, width, height, alpha -> 4 corners
-            bboxes = midpoint2corners(bboxes, self.dataset.rotated_bbox)
+            bboxes = midpoint2corners(bboxes, self.rotated_bbox)
             # 'xy' keypoint transform
             transformed = self.transform(image=image, masks=masks, keypoints=bboxes.reshape(-1, 2))
-            bboxes = corners2midpoint(np.array(transformed['keypoints']).reshape(-1, 4, 2).round().astype(int), self.dataset.rotated_bbox)
-            bboxes /= np.array([w, h, w, h, 90])    # normalize
+            bboxes = corners2midpoint(np.array(transformed['keypoints']).reshape(-1, 4, 2).round().astype(int), self.rotated_bbox)
+            bboxes /= np.array([w, h, w, h, 1])    # normalize
         else:   # not rotated
             bboxes /= np.array([w, h, w, h])
             # 'yolo' bounding box transform
@@ -118,6 +127,6 @@ class YOLOAirbus(Dataset):
 
 
 if __name__ == "__main__":
-    data = YOLOAirbus(AirbusDataset(undersample=-1, subset=100))
+    data = YoloAirbus(AirbusDataset(undersample=-1, subset=100))
 
     
