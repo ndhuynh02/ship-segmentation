@@ -224,3 +224,15 @@ def imshow_batch(images, masks=None, bboxes=None, grid_shape=(8, 8)):
         ax = fig.add_subplot(grid_shape[0], grid_shape[1], i + 1, xticks=[], yticks=[])
         ax.imshow(mask_overlay(img, mask))
     plt.show()
+
+
+def yolo2box(box: torch.Tensor) -> torch.Tensor:
+    # box has shape H, W, C
+
+    # find which pixels contain objects
+    idx = (box[..., 0] == 1).nonzero()      # (y, x)
+    result = box[idx[:, 0], idx[:, 1]][..., 1:]   # remove the object probability
+    result[..., 0] += idx[:, 1]
+    result[..., 1] += idx[:, 0]
+    
+    return result
