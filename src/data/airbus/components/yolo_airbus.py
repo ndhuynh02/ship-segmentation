@@ -11,7 +11,7 @@ import numpy as np
 
 from src.utils.airbus_utils import corners2midpoint, midpoint2corners, mergeMask
 
-scales = [48, 96, 192]
+strides = [16, 8, 4]
 stride2shape = {
     1: 768,
     2: 384,
@@ -20,11 +20,11 @@ stride2shape = {
     16: 48,
     32: 24
 }
+# from 96, there are no overlaped ships
 
 class YoloAirbus(Dataset):
     def __init__(self, dataset: AirbusDataset, transform: Optional[Compose] = None) -> None:
-        # protential scales: 36, 48, 96, 192, 384, 768
-        # from 96, there are no overlaped ships
+        
         super().__init__()
         
         self.dataset = dataset
@@ -36,7 +36,9 @@ class YoloAirbus(Dataset):
             self.rotated_bbox = dataset.dataset.rotated_bbox
 
         assert self.bbox_format == "midpoint", "bounding box format has to be 'midpoint'"
-        self.scales = scales
+        self.scales = []
+        for stride in strides:
+            self.scales.append(stride2shape[stride])
 
         if transform is not None:
             self.transform = transform
