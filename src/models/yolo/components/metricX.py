@@ -12,21 +12,22 @@ class IoU(Metric):
         self.object_threshold = object_threshold
 
     def update(self, preds: torch.Tensor, target: torch.Tensor) -> None:
-        pred = preds.clone()
-        tar = target.clone()
-        for p, t in zip(pred, tar):
+        for p, t in zip(preds, target):
+            p = p.clone()
+            t = t.clone()
             # p, t \in [H, W, C]
-            p[..., 0] = (torch.sigmoid(p[..., 0]) >= self.object_threshold) * 1
 
-            p = yolo2box(p)
-            t = yolo2box(t)
+            p = yolo2box(p, True, self.object_threshold)
+            t = yolo2box(t, True, self.object_threshold)
+            
+            p = torch.topk(p, min(len(p), len(t)), dim=0).values
 
-            p[..., -1] = p[..., -1] % math.pi
-            t[..., -1] = t[..., -1] * math.pi / 180 
+            p[..., -1] = p[..., -1] % math.pi           # get predicted angle (radian form)
+            t[..., -1] = t[..., -1] * math.pi / 180     # convert angle to radian
 
-            iou = box_iou_rotated(p, t, aligned=False, clockwise=True)
-            self.iou.append(iou)
+            iou = box_iou_rotated(p[..., 1:], t[..., 1:], aligned=True, clockwise=True)
+            self.iou.append(iou.view(1, -1))
 
     def compute(self) -> torch.Tensor:
-        score = torch.stack(self.iou)
+        score = torch.stack(self.iou, dim=1)
         return score.mean()

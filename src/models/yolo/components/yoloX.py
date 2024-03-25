@@ -4,7 +4,7 @@ pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 
 import torch
 from src.models.unet.components.unet34 import Unet34
-from src.data.airbus.components.yolo_airbus import scales
+from src.data.airbus.components.yolo_airbus import strides, stride2shape
 
 def get_activation(name="relu", inplace=True):
     if name == "silu":
@@ -51,7 +51,7 @@ class YoloX(torch.nn.Module):
         self.box_pred = torch.nn.ModuleList()
         self.obj_pred = torch.nn.ModuleList()
 
-        for _ in range(len(scales)):
+        for _ in range(len(strides)):
             self.reg_conv.append(
                 torch.nn.Sequential(
                     Conv(
@@ -71,25 +71,33 @@ class YoloX(torch.nn.Module):
             self.box_pred.append(torch.nn.Conv2d(256, out_channel, 1, 1))
             self.obj_pred.append(torch.nn.Conv2d(256, 1, 1, 1))
 
-        self.scales = scales
+        self.strides = strides
 
     def forward(self, x):
         obj_det = []
         masks = self.unet(x)
         i = 0
         for mask in masks:
-            if i == len(self.scales):
+            if i == len(self.strides):
                 break
-            if mask.shape[-1] == self.scales[i]:
+            if mask.shape[-1] == stride2shape[self.strides[i]]:
                 mask = self.reg_conv[i](mask)
                 box = torch.cat((
                     self.obj_pred[i](mask), self.box_pred[i](mask)
                 ), dim=1)
-                obj_det.append(box)
+                obj_det.append(self.get_output(box, self.strides[i]))
                 i += 1
 
         # return object detection prediction and predicted semantic mask
         return obj_det , masks[-1]      
+    
+    def get_output(self, box: torch.Tensor, stride: int):
+        # box.shape == [B, C, H, W]
+        box = box.permute(0, 2, 3, 1)   # B, H, W, C
+        box[..., :3] = torch.sigmoid(box[..., :3])
+        box[..., 3:5] = torch.exp(box[..., 3:5]) * stride
+
+        return box
 
 
 if __name__ == "__main__":

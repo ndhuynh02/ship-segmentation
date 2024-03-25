@@ -17,7 +17,7 @@ class YoloXLoss(nn.Module):
         """
         assert mode in ['linear', 'square', 'log']
 
-        self.obj_loss = nn.BCEWithLogitsLoss()
+        self.obj_loss = nn.BCELoss()
         self.box_loss = RotatedIoULoss(mode=mode)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -30,6 +30,7 @@ class YoloXLoss(nn.Module):
     def forward(self, predictions, target):
         """
         predictions, target has shape [B, H, W, C]
+        C: objectness, x, y, w, h, angle
         """
 
         tar = target.clone()
@@ -89,10 +90,13 @@ if __name__ == "__main__":
     loss = YoloXLoss()
     metric = IoU()
 
-    print("Loss:", loss(boxes[-1].permute(0, 2, 3, 1).to(device), bbox_targets[-1].unsqueeze(0).to(device)))
-    # box = boxes[-1].permute(0, 2, 3, 1).detach()
-    # tar = bbox_targets[-1].unsqueeze(0)
+    # LOSS
+    # print("Loss:", loss(boxes[-1].to(device), bbox_targets[-1].unsqueeze(0).to(device)))
+
+    # METRIC
+    box = boxes[-1].detach()
+    tar = bbox_targets[-1].unsqueeze(0) # add batch_size
 
     # print(box.shape, tar.shape)
-    # metric(box, tar)
-    # print("IoU:", metric.compute())
+    metric(box, tar)
+    print("IoU:", metric.compute())
