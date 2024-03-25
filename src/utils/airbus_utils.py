@@ -226,13 +226,16 @@ def imshow_batch(images, masks=None, bboxes=None, grid_shape=(8, 8)):
     plt.show()
 
 
-def yolo2box(box: torch.Tensor) -> torch.Tensor:
+def yolo2box(box: torch.Tensor, keep_obj_prob=False, obj_thresh=0.5) -> torch.Tensor:
     # box has shape H, W, C
+    # keep_obj_prob tells whether want to keep the is_object probability
 
     # find which pixels contain objects
-    idx = (box[..., 0] == 1).nonzero()      # (y, x)
-    result = box[idx[:, 0], idx[:, 1]][..., 1:]   # remove the object probability
-    result[..., 0] += idx[:, 1]
-    result[..., 1] += idx[:, 0]
-    
+    idx = (box[..., 0] >= obj_thresh).nonzero()      # (y, x)
+    result = box[idx[:, 0], idx[:, 1]]   
+    result[..., 1] += idx[:, 1]
+    result[..., 2] += idx[:, 0]
+
+    if not keep_obj_prob:
+        result = result[..., 1:]
     return result
