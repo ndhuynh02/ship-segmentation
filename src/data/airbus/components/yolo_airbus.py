@@ -8,6 +8,7 @@ from torch.utils.data import Dataset
 from data.airbus.components.airbus import AirbusDataset
 import torch
 import numpy as np
+import math
 
 from src.utils.airbus_utils import corners2midpoint, midpoint2corners, mergeMask
 
@@ -95,7 +96,7 @@ class YoloAirbus(Dataset):
             # 'xy' keypoint transform
             transformed = self.transform(image=image, masks=masks, keypoints=bboxes.reshape(-1, 2))
             bboxes = corners2midpoint(np.array(transformed['keypoints']).reshape(-1, 4, 2).round().astype(int), self.rotated_bbox)
-            bboxes /= np.array([w, h, w, h, 1])    # normalize
+            bboxes /= np.array([w, h, w, h, 180 / math.pi])    # normalize and convert alpha to radian
         else:   # not rotated
             bboxes /= np.array([w, h, w, h])
             # 'yolo' bounding box transform

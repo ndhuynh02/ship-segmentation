@@ -38,7 +38,7 @@ class YoloXLitModule(LightningModule):
 
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
-        self.save_hyperparameters(logger=False, ignore=["net", "criterion"])
+        self.save_hyperparameters(logger=False, ignore=["net", "criterion_segment, criterion_detect"])
 
         self.net = net
 
@@ -113,7 +113,6 @@ class YoloXLitModule(LightningModule):
 
         loss_detect = 0
         for p_b, t_b in zip(pred_boxes, y_boxes):
-            p_b = p_b.permute(0, 2, 3, 1)
             loss_detect += self.criterion_detect(p_b, t_b)
         loss_detect /= len(pred_boxes)
 
@@ -129,9 +128,8 @@ class YoloXLitModule(LightningModule):
 
         # update and log metrics
         self.train_loss(loss)
-        self.train_jaccard(pred_mask, target_mask)
+        self.train_jaccard(pred_mask, target_mask.unsqueeze(1))
         for p_b, t_b in zip(pred_boxes, target_boxes):
-            p_b = p_b.permute(0, 2, 3, 1)
             self.train_iou(p_b, t_b)
 
         # Code to try to fix CUDA out of memory issues
@@ -153,9 +151,8 @@ class YoloXLitModule(LightningModule):
 
         # update and log metrics
         self.val_loss(loss)
-        self.val_jaccard(pred_mask, target_mask)
+        self.val_jaccard(pred_mask, target_mask.unsqueeze(1))
         for p_b, t_b in zip(pred_boxes, target_boxes):
-            p_b = p_b.permute(0, 2, 3, 1)
             self.val_iou(p_b, t_b)
 
         self.log("val/loss", self.val_loss, on_step=False, on_epoch=True, prog_bar=True)
@@ -202,9 +199,8 @@ class YoloXLitModule(LightningModule):
         # update and log metrics
         # update and log metrics
         self.test_loss(loss)
-        self.test_jaccard(pred_mask, target_mask)
+        self.test_jaccard(pred_mask, target_mask.unsqueeze(1))
         for p_b, t_b in zip(pred_boxes, target_boxes):
-            p_b = p_b.permute(0, 2, 3, 1)
             self.test_iou(p_b, t_b)
 
         self.log("test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True)

@@ -32,37 +32,32 @@ class YoloXLoss(nn.Module):
         predictions, target has shape [B, H, W, C]
         C: objectness, x, y, w, h, angle
         """
-
-        tar = target.clone()
-        preds = predictions.clone()
         # Check where obj and noobj (we ignore if target == -1)
-        obj = tar[..., 0] == 1  # in paper this is Iobj_i
-        noobj = tar[..., 0] == 0  # in paper this is Inoobj_i
+        obj = target[..., 0] == 1  # in paper this is Iobj_i
+        noobj = target[..., 0] == 0  # in paper this is Inoobj_i
 
         # ======================= #
         #   FOR NO OBJECT LOSS    #
         # ======================= #
 
         no_object_loss = self.obj_loss(
-            (preds[..., 0:1][noobj]), (tar[..., 0:1][noobj]),
+            (predictions[..., 0:1][noobj]), (target[..., 0:1][noobj]),
         )
 
         # ==================== #
         #   FOR IOU LOSS    #
         # ==================== #
 
-        tar[..., -1] *= math.pi / 180   # convert angle to radian form
-        preds[..., -1] %= math.pi   # clip logit to range [0, pi]
+        iou_loss_1 = self.box_loss(predictions[..., 1:6][obj], target[..., 1:6][obj])   
 
-        iou_loss_1 = self.box_loss(preds[..., 1:6][obj], tar[..., 1:6][obj])   
-
-        tar_2 = tar.clone()
+        target_2 = target.clone()
         # swap width and height
-        tar_2[..., 3] = tar[..., 4]       
-        tar_2[..., 4] = tar[..., 3]
-        tar_2[..., 5] = (tar[..., 5] + (math.pi / 2)) % math.pi
+        target_2[..., 3] = target[..., 4]       
+        target_2[..., 4] = target[..., 3]
+        # calculate the version 2's angle
+        target_2[..., 5] = (target[..., 5] + (math.pi / 2)) % math.pi
 
-        iou_loss_2 = self.box_loss(preds[..., 1:6][obj], tar_2[..., 1:6][obj])   
+        iou_loss_2 = self.box_loss(predictions[..., 1:6][obj], target_2[..., 1:6][obj])   
         iou_loss = torch.minimum(iou_loss_1, iou_loss_2) 
 
         return no_object_loss + iou_loss.mean() 

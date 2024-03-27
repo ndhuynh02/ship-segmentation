@@ -1,4 +1,5 @@
 import gc
+import math
 
 import cv2
 import matplotlib.pyplot as plt
@@ -172,6 +173,7 @@ def imshow(image, masks=None, bboxes=None, bbox_format="corners", rotated_bbox=F
                 )
         else:
             if bbox_format == "midpoint":
+                bounding_boxes[..., -1] = bounding_boxes[..., -1] * (180 / math.pi)     # convert radian to degree
                 bounding_boxes = midpoint2corners(bounding_boxes, rotated_bbox=True)
             img = cv2.drawContours(img, bounding_boxes.astype(np.int64), -1, (255, 0, 0), 1)
             
