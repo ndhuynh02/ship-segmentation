@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from skimage.measure import label, regionprops
+from mmcv.ops import box_iou_rotated
 
 
 def rle_decode(mask_rle, shape=(768, 768)):
@@ -241,3 +242,26 @@ def yolo2box(box: torch.Tensor, keep_obj_prob=False, obj_thresh=0.5) -> torch.Te
     if not keep_obj_prob:
         result = result[..., 1:]
     return result
+
+
+def rotate_nms(boxes: torch.Tensor, iou_threshold=0.7):
+    # boxes: Tensor contains a list of [conf_score, x_cen, y_cen, box_width, box_height, angle]
+    boxes = sorted(boxes, key=lambda x: x[0], reverse=True)
+    bboxes_after_nms = []
+    while boxes:
+        chosen_box = boxes.pop(0)
+
+        boxes = [
+            box
+            for box in boxes
+            if box_iou_rotated(
+                chosen_box[1:].unsqueeze(0),
+                box[1:].unsqueeze(0), 
+                aligned=True, clockwise=True
+            ).item()
+            < iou_threshold
+        ]
+
+        bboxes_after_nms.append(chosen_box)
+
+    return torch.Tensor(bboxes_after_nms)
