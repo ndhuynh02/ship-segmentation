@@ -129,6 +129,7 @@ class YoloWandbCallback(Callback):
             target_box = [scale[idx] for scale in outputs['target_boxes']]
             target_box = self.get_boxes(target_box)
             target_box *= torch.Tensor([1, self.W, self.H, self.W, self.H, 1])     # denormalize the bounding boxes
+            target_box = rotate_nms(target_box, 0.5)
 
             pred_box = [scale[idx] for scale in outputs['pred_boxes']]
             pred_box = self.get_boxes(pred_box)
