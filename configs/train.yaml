@@ -6,7 +6,7 @@ defaults:
   - _self_
   - data: yoloX_airbus.yaml
   - model: yoloX.yaml
-  - callbacks: null
+  - callbacks: yolo_callback.yaml
   - logger: wandb # set logger here or use command line (e.g. `python train.py logger=tensorboard`)
   - trainer: gpu.yaml
   - paths: default.yaml
