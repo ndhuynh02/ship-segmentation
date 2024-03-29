@@ -264,4 +264,4 @@ def rotate_nms(boxes: torch.Tensor, iou_threshold=0.7):
 
         bboxes_after_nms.append(chosen_box)
 
-    return torch.Tensor(bboxes_after_nms)
+    return torch.cat(bboxes_after_nms).view(-1, 6)
