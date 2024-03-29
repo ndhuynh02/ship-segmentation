@@ -1,3 +1,4 @@
+import gc
 import math
 import torch
 from torch import nn
@@ -5,7 +6,7 @@ from mmrotate.models.losses.rotated_iou_loss import RotatedIoULoss
 
 
 class YoloXLoss(nn.Module):
-    def __init__(self, mode:str = 'linear', device='cpu') -> None:
+    def __init__(self, mode:str = 'linear') -> None:
         super().__init__()
         """
         if self.mode == 'linear':
@@ -34,14 +35,26 @@ class YoloXLoss(nn.Module):
         """
         # Check where obj and noobj (we ignore if target == -1)
         obj = target[..., 0] == 1  # in paper this is Iobj_i
-        noobj = target[..., 0] == 0  # in paper this is Inoobj_i
 
         # ======================= #
-        #   FOR NO OBJECT LOSS    #
+        #   FOR OBJECT LOSS    #
         # ======================= #
 
-        no_object_loss = self.obj_loss(
-            (predictions[..., 0:1][noobj]), (target[..., 0:1][noobj]),
+        cnt1 = obj.sum().item()  # count number of objects in image
+        cnt0 = target[..., 0].numel() - cnt1
+        if cnt1 != 0:
+            BCE_pos_weight = torch.FloatTensor([1.0 * cnt0 / cnt1]).to(device=self.device)
+        else:
+            BCE_pos_weight = torch.FloatTensor([1.0]).to(device=self.device)
+
+        del cnt0, cnt1
+        gc.collect()
+        torch.cuda.empty_cache()
+
+        self.update_pos_weight(pos_weight=BCE_pos_weight)
+
+        object_loss = self.obj_loss(
+            predictions[..., 0], target[..., 0],
         )
 
         # ==================== #
@@ -60,7 +73,10 @@ class YoloXLoss(nn.Module):
         iou_loss_2 = self.box_loss(predictions[..., 1:6][obj], target_2[..., 1:6][obj])   
         iou_loss = torch.minimum(iou_loss_1, iou_loss_2) 
 
-        return no_object_loss + iou_loss.mean() 
+        return {
+            'object': object_loss,
+            'iou': iou_loss.mean() 
+        }
     
 
 if __name__ == "__main__":

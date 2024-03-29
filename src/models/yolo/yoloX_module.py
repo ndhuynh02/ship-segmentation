@@ -52,9 +52,10 @@ class YoloXLitModule(LightningModule):
         self.test_jaccard = JaccardIndex(task="binary", num_classes=2)
 
         # metric for object detection
-        self.train_iou = IoU()
-        self.val_iou = IoU()
-        self.test_iou = IoU()
+        # self.train_iou = IoU()
+        # self.val_iou = IoU()
+        # self.test_iou = IoU()
+        self.val_iou = []
 
         # for averaging loss across batches
         self.train_loss = MeanMetric()
@@ -73,12 +74,13 @@ class YoloXLitModule(LightningModule):
         # so it's worth to make sure validation metrics don't store results from these checks
         self.val_loss.reset()
         self.val_jaccard.reset()
-        self.val_iou.reset()
+        self.val_iou = []
         self.val_best_jaccard.reset()
         self.val_best_iou.reset()
 
     def model_step(self, batch: Any):
         x, y_mask, y_boxes = batch[0], batch[1], batch[2]
+        losses = {}
 
         if isinstance(self.criterion_segment, (LossBinary, BCE_Lovasz)):
             cnt1 = (y_mask == 1).sum().item()  # count number of class 1 in image
@@ -93,92 +95,81 @@ class YoloXLitModule(LightningModule):
             torch.cuda.empty_cache()
 
             self.criterion_segment.update_pos_weight(pos_weight=BCE_pos_weight)
-        
-        if isinstance(self.criterion_detect, YoloXLoss):
-            cnt1 = (y_boxes[-1][..., 0] == 1).sum().item()  # count number of objects in image
-            cnt0 = y_boxes[-1][..., 0].numel() - cnt1
-            if cnt1 != 0:
-                BCE_pos_weight = torch.FloatTensor([1.0 * cnt0 / cnt1]).to(device=self.device)
-            else:
-                BCE_pos_weight = torch.FloatTensor([1.0]).to(device=self.device)
-
-            del cnt0, cnt1
-            gc.collect()
-            torch.cuda.empty_cache()
-
-            self.criterion_detect.update_pos_weight(pos_weight=BCE_pos_weight)
 
         pred_boxes, pred_mask = self.forward(x)
-        loss_segment = self.criterion_segment(pred_mask, y_mask)
+        losses['segment'] = self.criterion_segment(pred_mask, y_mask)
 
-        loss_detect = 0
+        loss_object = 0
+        loss_iou = 0
+        # calulate the loss for all detect scales
         for p_b, t_b in zip(pred_boxes, y_boxes):
-            loss_detect += self.criterion_detect(p_b, t_b)
-        loss_detect /= len(pred_boxes)
+            l = self.criterion_detect(p_b, t_b)
+            loss_object += l['object']
+            loss_iou += l['iou']
+        losses['object'] = loss_object / len(pred_boxes)
+        losses['iou'] = loss_iou / len(pred_boxes)
 
         # Code to try to fix CUDA out of memory issues
         del x
         gc.collect()
         torch.cuda.empty_cache()
 
-        return loss_segment + loss_detect, pred_boxes, pred_mask, y_boxes, y_mask, 
+        return losses, pred_boxes, pred_mask, y_boxes, y_mask, 
 
     def training_step(self, batch: Any, batch_idx: int):
-        loss, pred_boxes, pred_mask, target_boxes, target_mask = self.model_step(batch)
+        losses, pred_boxes, pred_mask, target_boxes, target_mask = self.model_step(batch)
+        loss_total = sum(l for l in losses.values())
 
         # update and log metrics
-        self.train_loss(loss)
+        self.train_loss(loss_total)
         self.train_jaccard(pred_mask, target_mask.unsqueeze(1))
-        for p_b, t_b in zip(pred_boxes, target_boxes):
-            self.train_iou(p_b, t_b)
+        # for p_b, t_b in zip(pred_boxes, target_boxes):
+        #     self.train_iou(p_b, t_b)
 
         # Code to try to fix CUDA out of memory issues
         del pred_mask, target_mask, pred_boxes, target_boxes
         gc.collect()
         torch.cuda.empty_cache()
 
-        self.log("train/loss", self.train_loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("train/loss_segment", losses['segment'], on_step=False, on_epoch=True, prog_bar=True)
+        self.log("train/loss_detect", losses['object'] + losses['iou'], on_step=False, on_epoch=True, prog_bar=True)
+        self.log("train/loss_total", self.train_loss, on_step=False, on_epoch=True, prog_bar=True)
+
         self.log("train/jaccard", self.train_jaccard, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("train/box_iou", self.train_iou, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("train/box_iou", 1 - losses["iou"], on_step=False, on_epoch=True, prog_bar=True)
 
         # we can return here dict with any tensors
         # and then read it in some callback or in `training_epoch_end()` below
         # remember to always return loss from `training_step()` or backpropagation will fail!
-        return {"loss": loss}
+        return {"loss": loss_total}
 
     def validation_step(self, batch: Any, batch_idx: int):
-        loss, pred_boxes, pred_mask, target_boxes, target_mask = self.model_step(batch)
+        losses, pred_boxes, pred_mask, target_boxes, target_mask = self.model_step(batch)
+        loss_total = sum(l for l in losses.values())
 
         # update and log metrics
-        self.val_loss(loss)
+        self.val_loss(loss_total)
         self.val_jaccard(pred_mask, target_mask.unsqueeze(1))
-        for p_b, t_b in zip(pred_boxes, target_boxes):
-            self.val_iou(p_b, t_b)
+        self.val_iou.append(1 - losses["iou"])
+        # for p_b, t_b in zip(pred_boxes, target_boxes):
+        #     self.val_iou(p_b, t_b)
 
-        self.log("val/loss", self.val_loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log(
-            "val/jaccard",
-            self.val_jaccard,
-            on_step=False,
-            on_epoch=True,
-            prog_bar=True,
-        )
-        self.log(
-            "val/box_iou",
-            self.val_iou,
-            on_step=False,
-            on_epoch=True,
-            prog_bar=True,
-        )
+        self.log("val/loss_segment", losses['segment'], on_step=False, on_epoch=True, prog_bar=True)
+        self.log("val/loss_detect", losses['object'] + losses['iou'], on_step=False, on_epoch=True, prog_bar=True)
+        self.log("val/loss_total", self.val_loss, on_step=False, on_epoch=True, prog_bar=True)
 
-        return {"loss": loss, 
+        self.log("val/jaccard", self.val_jaccard, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("val/box_iou", 1 - losses["iou"], on_step=False, on_epoch=True, prog_bar=True)
+
+        return {"loss": loss_total, 
                 "pred_boxes": pred_boxes, "pred_mask": pred_mask,
                 "target_boxes": target_boxes, "target_mask": target_mask}
 
     def on_validation_epoch_end(self):
         # get current val acc
         jaccard = self.val_jaccard.compute()
-        iou = self.val_iou.compute()
+        iou = torch.Tensor(self.val_iou).mean()
+        self.val_iou = []
         # update best so far val acc
         self.val_best_jaccard(jaccard)
         self.val_best_iou(iou)
@@ -194,20 +185,24 @@ class YoloXLitModule(LightningModule):
         self.log("val/iou_best", self.val_best_iou.compute(), prog_bar=True)
 
     def test_step(self, batch: Any, batch_idx: int):
-        loss, pred_boxes, pred_mask, target_boxes, target_mask = self.model_step(batch)
+        losses, pred_boxes, pred_mask, target_boxes, target_mask = self.model_step(batch)
+        loss_total = sum(l for l in losses.values())
 
         # update and log metrics
         # update and log metrics
-        self.test_loss(loss)
+        self.test_loss(loss_total)
         self.test_jaccard(pred_mask, target_mask.unsqueeze(1))
-        for p_b, t_b in zip(pred_boxes, target_boxes):
-            self.test_iou(p_b, t_b)
+        # for p_b, t_b in zip(pred_boxes, target_boxes):
+        #     self.test_iou(p_b, t_b)
 
-        self.log("test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("test/loss_segment", losses['segment'], on_step=False, on_epoch=True, prog_bar=True)
+        self.log("test/loss_detect", losses['object'] + losses['iou'], on_step=False, on_epoch=True, prog_bar=True)
+        self.log("test/loss_total", self.test_loss, on_step=False, on_epoch=True, prog_bar=True)
+
         self.log("test/jaccard", self.test_jaccard, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("test/iou", self.test_iou, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("test/box_iou", 1 - losses["iou"], on_step=False, on_epoch=True, prog_bar=True)
 
-        return {"loss": loss, 
+        return {"loss": loss_total, 
                 "pred_boxes": pred_boxes, "pred_mask": pred_mask,
                 "target_boxes": target_boxes, "target_mask": target_mask}
 
@@ -225,7 +220,7 @@ class YoloXLitModule(LightningModule):
                 "optimizer": optimizer,
                 "lr_scheduler": {
                     "scheduler": scheduler,
-                    "monitor": "val/loss",
+                    "monitor": "val/loss_total",
                     "interval": "epoch",
                     "frequency": 1,
                 },

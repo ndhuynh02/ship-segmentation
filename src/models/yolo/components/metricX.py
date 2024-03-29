@@ -1,4 +1,3 @@
-import math
 import torch
 from torchmetrics import Metric
 from mmcv.ops import box_iou_rotated
@@ -19,11 +18,11 @@ class IoU(Metric):
             p = yolo2box(p, True, self.object_threshold)
             t = yolo2box(t, True, self.object_threshold)
             
-            p = torch.topk(p, min(len(p), len(t)), dim=0).values
+            p = torch.topk(p, min(len(p), len(t)), dim=1).values
             
             iou = box_iou_rotated(p[..., 1:], t[..., 1:], aligned=False, clockwise=True)
             self.iou + torch.max(iou, dim=0).values.sum()
-            self.total += len(t)
+            self.total += len(p)
 
     def compute(self) -> torch.Tensor:
         return self.iou / self.total
