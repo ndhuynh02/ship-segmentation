@@ -63,7 +63,8 @@ class YoloWandbCallback(Callback):
             # normalize x_cen, y_cen, width, height
             # but keep confident score and angle
             b = yolo2box(box, True) / torch.Tensor([1, w, h, w, h, 1])    # shape (N, 6)
-            boxes.append(b)
+            if len(b):
+                boxes.append(b)
         boxes = torch.cat(boxes)
         
         return boxes
@@ -80,13 +81,14 @@ class YoloWandbCallback(Callback):
         log_image = mask_overlay(self.sample_image, output_mask.cpu().numpy().astype(np.uint8))
 
         boxes = self.get_boxes(output_box)
-        boxes = rotate_nms(boxes)
-        boxes *= torch.Tensor([1, self.W, self.H, self.W, self.H, 1])     # denormalize the bounding boxes
-        # boxes.shape = [N, 6]
+        if len(boxes):
+            boxes = rotate_nms(boxes)
+            boxes *= torch.Tensor([1, self.W, self.H, self.W, self.H, 1])     # denormalize the bounding boxes
+            # boxes.shape = [N, 6]
 
-        boxes[..., -1] = boxes[..., -1] * (180 / math.pi)     # convert radian to degree
-        boxes = midpoint2corners(boxes[:, 1:].cpu().numpy(), rotated_bbox=True)
-        log_image = cv2.drawContours(log_image, boxes.astype(np.int64), -1, (255, 0, 0), 1)
+            boxes[..., -1] = boxes[..., -1] * (180 / math.pi)     # convert radian to degree
+            boxes = midpoint2corners(boxes[:, 1:].cpu().numpy(), rotated_bbox=True)
+            log_image = cv2.drawContours(log_image, boxes.astype(np.int64), -1, (255, 0, 0), 1)
             
         self.logger.log_image(
             key="{} prediction".format(self.process),
@@ -133,14 +135,14 @@ class YoloWandbCallback(Callback):
 
             pred_box = [scale[idx] for scale in outputs['pred_boxes']]
             pred_box = self.get_boxes(pred_box)
-            # pred_box = rotate_nms(pred_box)
-            idx = torch.topk(pred_box[:, 0], min(len(pred_box), len(target_box)), dim=0).indices
-            pred_box = pred_box[idx]
-            pred_box *= torch.Tensor([1, self.W, self.H, self.W, self.H, 1])     # denormalize the bounding boxes
+            if len(pred_box):
+                idx = torch.topk(pred_box[:, 0], min(len(pred_box), len(target_box)), dim=0).indices
+                pred_box = pred_box[idx]
+                pred_box *= torch.Tensor([1, self.W, self.H, self.W, self.H, 1])     # denormalize the bounding boxes
 
-            pred_box[..., -1] = pred_box[..., -1] * (180 / math.pi)     # convert radian to degree
-            pred_box = midpoint2corners(pred_box[:, 1:].cpu().numpy(), rotated_bbox=True)
-            log_pred = cv2.drawContours(log_pred, pred_box.astype(np.int64), -1, (255, 0, 0), 1)
+                pred_box[..., -1] = pred_box[..., -1] * (180 / math.pi)     # convert radian to degree
+                pred_box = midpoint2corners(pred_box[:, 1:].cpu().numpy(), rotated_bbox=True)
+                log_pred = cv2.drawContours(log_pred, pred_box.astype(np.int64), -1, (255, 0, 0), 1)
             
             target_box[..., -1] = target_box[..., -1] * (180 / math.pi)     # convert radian to degree
             target_box = midpoint2corners(target_box[:, 1:].cpu().numpy(), rotated_bbox=True)
