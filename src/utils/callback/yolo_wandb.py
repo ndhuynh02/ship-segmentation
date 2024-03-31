@@ -65,7 +65,10 @@ class YoloWandbCallback(Callback):
             b = yolo2box(box, True) / torch.Tensor([1, w, h, w, h, 1])    # shape (N, 6)
             if len(b):
                 boxes.append(b)
-        boxes = torch.cat(boxes)
+        if len(boxes):
+            boxes = torch.cat(boxes)
+        else:
+            boxes = torch.Tensor([])
         
         return boxes
 
