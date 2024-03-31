@@ -151,11 +151,6 @@ class YoloWandbCallback(Callback):
             target_box = midpoint2corners(target_box[:, 1:].cpu().numpy(), rotated_bbox=True)
             log_target = cv2.drawContours(log_target, target_box.astype(np.int64), -1, (255, 0, 0), 1)
 
-            # Code to try to fix CUDA out of memory issues
-            del pred_mask, pred_box, target_mask, target_box
-            gc.collect()
-            torch.cuda.empty_cache()
-
             self.logger.log_image(
                 key="{} prediction".format(self.process),
                 images=[
@@ -163,10 +158,15 @@ class YoloWandbCallback(Callback):
                     Image.fromarray(log_pred),
                     Image.fromarray(log_target),
                 ],
-                caption=[id + "-Real", id + "-Predict", id + "-GroundTruth"],
+                caption=[id + "-Real", id + " - " + str(len(pred_box)) + " - Predict", id + " - " + str(len(pred_box)) + " - GroundTruth"],
             )
 
             self.n_images_to_log -= 1
+
+            # Code to try to fix CUDA out of memory issues
+            del pred_mask, pred_box, target_mask, target_box
+            gc.collect()
+            torch.cuda.empty_cache()
 
     def on_test_batch_end(
             self, 
