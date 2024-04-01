@@ -56,7 +56,11 @@ class YoloXLitModule(LightningModule):
         self.train_acc = BinaryAccuracy()
         self.val_acc = BinaryAccuracy()
         self.test_acc = BinaryAccuracy()
-        self.val_iou = []
+        # self.val_iou = []
+
+        self.train_iou = IoU()
+        self.val_iou = IoU()
+        self.test_iou = IoU()
 
         # for averaging loss across batches
         self.train_loss = MeanMetric()
@@ -77,7 +81,8 @@ class YoloXLitModule(LightningModule):
         self.val_loss.reset()
         self.val_jaccard.reset()
         self.val_acc.reset()
-        self.val_iou = []
+        # self.val_iou = []
+        self.val_iou.reset()
         self.val_best_jaccard.reset()
         self.val_best_iou.reset()
         self.val_best_acc.reset()
@@ -127,8 +132,11 @@ class YoloXLitModule(LightningModule):
         # update and log metrics
         self.train_loss(loss_total)
         self.train_jaccard(pred_mask, target_mask.unsqueeze(1))
+        
         for p_b, t_b in zip(pred_boxes, target_boxes):
-            self.train_acc(p_b[..., 0], t_b[..., 0])
+            is_object = t_b[..., 0] == 1
+            self.train_acc(p_b[..., 0][is_object], t_b[..., 0][is_object])
+            self.train_iou(p_b, t_b)
 
         # Code to try to fix CUDA out of memory issues
         del pred_mask, target_mask, pred_boxes, target_boxes
@@ -136,11 +144,12 @@ class YoloXLitModule(LightningModule):
         torch.cuda.empty_cache()
 
         self.log("train/loss_segment", losses['segment'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
-        self.log("train/loss_detect", losses['object'] + losses['iou'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
+        self.log("train/loss_object", losses['object'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
+        self.log("train/loss_iou", losses['iou'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
         self.log("train/loss_total", self.train_loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
 
         self.log("train/jaccard", self.train_jaccard, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
-        self.log("train/box_iou", 1 - losses["iou"], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
+        self.log("train/box_iou", self.train_iou, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
         self.log("train/box_acc", self.train_acc, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
 
         # we can return here dict with any tensors
@@ -155,16 +164,19 @@ class YoloXLitModule(LightningModule):
         # update and log metrics
         self.val_loss(loss_total)
         self.val_jaccard(pred_mask, target_mask.unsqueeze(1))
-        self.val_iou.append(1 - losses["iou"])
+        # self.val_iou.append(1 - losses["iou"])
         for p_b, t_b in zip(pred_boxes, target_boxes):
-            self.val_acc(p_b[..., 0], t_b[..., 0])
+            is_object = t_b[..., 0] == 1
+            self.val_acc(p_b[..., 0][is_object], t_b[..., 0][is_object])
+            self.val_iou(p_b, t_b)
 
         self.log("val/loss_segment", losses['segment'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
-        self.log("val/loss_detect", losses['object'] + losses['iou'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
+        self.log("val/loss_object", losses['object'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
+        self.log("val/loss_iou", losses['iou'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
         self.log("val/loss_total", self.val_loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
 
         self.log("val/jaccard", self.val_jaccard, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
-        self.log("val/box_iou", 1 - losses["iou"], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
+        self.log("val/box_iou", self.val_iou, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
         self.log("val/box_acc", self.val_acc, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
 
         return {"loss": loss_total, 
@@ -174,8 +186,9 @@ class YoloXLitModule(LightningModule):
     def on_validation_epoch_end(self):
         # get current val acc
         jaccard = self.val_jaccard.compute()
-        iou = torch.Tensor(self.val_iou).mean()
-        self.val_iou = []
+        # iou = torch.Tensor(self.val_iou).mean()
+        # self.val_iou = []
+        iou = self.val_iou.compute()
         acc = self.val_acc.compute()
         # update best so far val acc
         self.val_best_jaccard(jaccard)
@@ -191,6 +204,7 @@ class YoloXLitModule(LightningModule):
         # otherwise metric would be reset by lightning after each epoch
         self.log("val/jaccard_best", self.val_best_jaccard.compute(), prog_bar=True)
         self.log("val/iou_best", self.val_best_iou.compute(), prog_bar=True)
+        self.log("val/acc_best", self.val_best_acc.compute(), prog_bar=True)
 
     def test_step(self, batch: Any, batch_idx: int):
         losses, pred_boxes, pred_mask, target_boxes, target_mask = self.model_step(batch)
@@ -201,14 +215,17 @@ class YoloXLitModule(LightningModule):
         self.test_loss(loss_total)
         self.test_jaccard(pred_mask, target_mask.unsqueeze(1))
         for p_b, t_b in zip(pred_boxes, target_boxes):
-            self.test_acc(p_b[..., 0], t_b[..., 0])
+            is_object = t_b[..., 0] == 1
+            self.test_acc(p_b[..., 0][is_object], t_b[..., 0][is_object])
+            self.test_iou(p_b, t_b)
 
         self.log("test/loss_segment", losses['segment'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
-        self.log("test/loss_detect", losses['object'] + losses['iou'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
+        self.log("test/loss_object", losses['object'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
+        self.log("test/loss_iou", losses['iou'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
         self.log("test/loss_total", self.test_loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
 
         self.log("test/jaccard", self.test_jaccard, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
-        self.log("test/box_iou", 1 - losses["iou"], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
+        self.log("test/box_iou", self.test_iou, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
         self.log("test/box_acc", self.test_acc, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
 
         return {"loss": loss_total, 

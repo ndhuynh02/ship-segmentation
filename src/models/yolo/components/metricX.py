@@ -18,7 +18,7 @@ class IoU(Metric):
             p = yolo2box(p, True, self.object_threshold)
             t = yolo2box(t, True, self.object_threshold)
             
-            idx = torch.topk(p[..., 0], min(len(p), len(t)), dim=1).indices
+            idx = torch.topk(p[..., 0], min(len(p), len(t)), dim=0).indices
             p = p[idx]
             
             iou = box_iou_rotated(p[..., 1:], t[..., 1:], aligned=False, clockwise=True)
