@@ -158,7 +158,7 @@ class YoloWandbCallback(Callback):
                     Image.fromarray(log_pred),
                     Image.fromarray(log_target),
                 ],
-                caption=[id + "-Real", id + " - " + str(len(pred_box)) + " - Predict", id + " - " + str(len(pred_box)) + " - GroundTruth"],
+                caption=[id + "-Real", id + " - " + str(len(pred_box)) + " - Predict", id + " - " + str(len(target_box)) + " - GroundTruth"],
             )
 
             self.n_images_to_log -= 1
