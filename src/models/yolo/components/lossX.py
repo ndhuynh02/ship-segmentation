@@ -35,26 +35,26 @@ class YoloXLoss(nn.Module):
         """
         # Check where obj and noobj (we ignore if target == -1)
         obj = target[..., 0] == 1  # in paper this is Iobj_i
+        # noobj = target[..., 0] == 0  # in paper this is Inoobj_i
 
         # ======================= #
         #   FOR OBJECT LOSS    #
         # ======================= #
 
-        cnt1 = obj.sum().item()  # count number of objects in image
-        cnt0 = target[..., 0].numel() - cnt1
-        if cnt1 != 0:
-            BCE_pos_weight = torch.FloatTensor([1.0 * cnt0 / cnt1]).to(device=self.device)
-        else:
-            BCE_pos_weight = torch.FloatTensor([1.0]).to(device=self.device)
+        # cnt1 = obj.sum().item()  # count number of objects in image
+        # cnt0 = target[..., 0].numel() - cnt1
+        # if cnt1 != 0:
+        #     BCE_pos_weight = torch.FloatTensor([1.0 * cnt0 / cnt1]).to(device=self.device)
+        # else:
+        #     BCE_pos_weight = torch.FloatTensor([1.0]).to(device=self.device)
+        # self.update_pos_weight(pos_weight=BCE_pos_weight)
 
-        del cnt0, cnt1
-        gc.collect()
-        torch.cuda.empty_cache()
-
-        self.update_pos_weight(pos_weight=BCE_pos_weight)
+        # del cnt0, cnt1
+        # gc.collect()
+        # torch.cuda.empty_cache()
 
         object_loss = self.obj_loss(
-            predictions[..., 0], target[..., 0],
+            predictions[..., 0][obj], target[..., 0][obj],
         )
 
         # ==================== #
