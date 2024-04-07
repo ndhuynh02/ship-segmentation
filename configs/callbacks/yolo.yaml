@@ -1,0 +1,9 @@
+defaults:
+  - yolo_checkpoint.yaml
+  - model_summary.yaml
+  - rich_progress_bar.yaml
+  - yolo_callback.yaml
+  - _self_
+
+model_summary:
+  max_depth: -1

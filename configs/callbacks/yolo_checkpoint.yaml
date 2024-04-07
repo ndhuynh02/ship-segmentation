@@ -1,0 +1,26 @@
+jaccard_checkpoint:
+  _target_: pytorch_lightning.callbacks.ModelCheckpoint
+  dirpath: ${paths.output_dir}/checkpoints
+  filename: "best_jaccard"
+  monitor: "val/jaccard"
+  mode: "max"
+  save_last: False
+  auto_insert_metric_name: False
+
+box_iou_checkpoint:
+  _target_: pytorch_lightning.callbacks.ModelCheckpoint
+  dirpath: ${paths.output_dir}/checkpoints
+  filename: "best_box_iou"
+  monitor: "val/box_iou"
+  mode: "max"
+  save_last: Fasle
+  auto_insert_metric_name: False
+
+box_f1_checkpoint:
+  _target_: pytorch_lightning.callbacks.ModelCheckpoint
+  dirpath: ${paths.output_dir}/checkpoints
+  filename: "best_box_f1"
+  monitor: "val/box_f1"
+  mode: "max"
+  save_last: False
+  auto_insert_metric_name: False
