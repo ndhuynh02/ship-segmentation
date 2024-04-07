@@ -4,12 +4,14 @@ from typing import Any, List
 import torch
 from pytorch_lightning import LightningModule
 from torchmetrics import JaccardIndex, MaxMetric, MeanMetric
-from torchmetrics.classification import BinaryAccuracy
+from torchmetrics.classification import BinaryAccuracy, BinaryF1Score
 
 from src.models.loss_function.lossbinary import LossBinary
 from src.models.loss_function.lovasz_loss import BCE_Lovasz
 from src.models.yolo.components.metricX import IoU
 from src.models.yolo.components.lossX import YoloXLoss
+
+from src.utils.airbus_utils import get_weight
 
 
 class YoloXLitModule(LightningModule):
@@ -53,14 +55,14 @@ class YoloXLitModule(LightningModule):
         self.test_jaccard = JaccardIndex(task="binary", num_classes=2)
 
         # metric for object detection
-        self.train_acc = BinaryAccuracy()
-        self.val_acc = BinaryAccuracy()
-        self.test_acc = BinaryAccuracy()
-        # self.val_iou = []
+        self.train_f1 = BinaryF1Score(threshold=0.7)
+        self.val_f1 = BinaryF1Score(threshold=0.7)
+        self.test_f1 = BinaryF1Score(threshold=0.7)
+        self.val_iou = []
 
-        self.train_iou = IoU()
-        self.val_iou = IoU()
-        self.test_iou = IoU()
+        # self.train_iou = IoU()
+        # self.val_iou = IoU()
+        # self.test_iou = IoU()
 
         # for averaging loss across batches
         self.train_loss = MeanMetric()
@@ -70,7 +72,7 @@ class YoloXLitModule(LightningModule):
         # for tracking best so far validation accuracy
         self.val_best_jaccard = MaxMetric()
         self.val_best_iou = MaxMetric()
-        self.val_best_acc = MaxMetric()
+        self.val_best_f1 = MaxMetric()
 
     def forward(self, x: torch.Tensor):
         return self.net(x)
@@ -80,30 +82,20 @@ class YoloXLitModule(LightningModule):
         # so it's worth to make sure validation metrics don't store results from these checks
         self.val_loss.reset()
         self.val_jaccard.reset()
-        self.val_acc.reset()
-        # self.val_iou = []
-        self.val_iou.reset()
+        self.val_f1.reset()
+        self.val_iou = []
+        # self.val_iou.reset()
         self.val_best_jaccard.reset()
         self.val_best_iou.reset()
-        self.val_best_acc.reset()
+        self.val_best_f1.reset()
 
     def model_step(self, batch: Any):
         x, y_mask, y_boxes = batch[0], batch[1], batch[2]
         losses = {}
 
         if isinstance(self.criterion_segment, (LossBinary, BCE_Lovasz)):
-            cnt1 = (y_mask == 1).sum().item()  # count number of class 1 in image
-            cnt0 = y_mask.numel() - cnt1
-            if cnt1 != 0:
-                BCE_pos_weight = torch.FloatTensor([1.0 * cnt0 / cnt1]).to(device=self.device)
-            else:
-                BCE_pos_weight = torch.FloatTensor([1.0]).to(device=self.device)
-
-            del cnt0, cnt1
-            gc.collect()
-            torch.cuda.empty_cache()
-
-            self.criterion_segment.update_pos_weight(pos_weight=BCE_pos_weight)
+            weight = get_weight(y_mask, channel_dim=1)
+            self.criterion_segment.update_weight(weight=weight)
 
         pred_boxes, pred_mask = self.forward(x)
         losses['segment'] = self.criterion_segment(pred_mask, y_mask)
@@ -131,12 +123,12 @@ class YoloXLitModule(LightningModule):
 
         # update and log metrics
         self.train_loss(loss_total)
-        self.train_jaccard(pred_mask, target_mask.unsqueeze(1))
+        self.train_jaccard(pred_mask, target_mask)
         
         for p_b, t_b in zip(pred_boxes, target_boxes):
-            is_object = t_b[..., 0] == 1
-            self.train_acc(p_b[..., 0][is_object], t_b[..., 0][is_object])
-            self.train_iou(p_b, t_b)
+            # is_object = t_b[..., 0] == 1
+            self.train_f1(p_b[..., 0], t_b[..., 0])
+            # self.train_iou(p_b, t_b)
 
         # Code to try to fix CUDA out of memory issues
         del pred_mask, target_mask, pred_boxes, target_boxes
@@ -149,8 +141,8 @@ class YoloXLitModule(LightningModule):
         self.log("train/loss_total", self.train_loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
 
         self.log("train/jaccard", self.train_jaccard, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
-        self.log("train/box_iou", self.train_iou, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
-        self.log("train/box_acc", self.train_acc, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
+        self.log("train/box_iou", 1 - losses['iou'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
+        self.log("train/box_f1", self.train_f1, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
 
         # we can return here dict with any tensors
         # and then read it in some callback or in `training_epoch_end()` below
@@ -163,12 +155,12 @@ class YoloXLitModule(LightningModule):
 
         # update and log metrics
         self.val_loss(loss_total)
-        self.val_jaccard(pred_mask, target_mask.unsqueeze(1))
-        # self.val_iou.append(1 - losses["iou"])
+        self.val_jaccard(pred_mask, target_mask)
+        self.val_iou.append(1 - losses["iou"])
         for p_b, t_b in zip(pred_boxes, target_boxes):
-            is_object = t_b[..., 0] == 1
-            self.val_acc(p_b[..., 0][is_object], t_b[..., 0][is_object])
-            self.val_iou(p_b, t_b)
+            # is_object = t_b[..., 0] == 1
+            self.val_f1(p_b[..., 0], t_b[..., 0])
+            # self.val_iou(p_b, t_b)
 
         self.log("val/loss_segment", losses['segment'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
         self.log("val/loss_object", losses['object'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
@@ -176,8 +168,8 @@ class YoloXLitModule(LightningModule):
         self.log("val/loss_total", self.val_loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
 
         self.log("val/jaccard", self.val_jaccard, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
-        self.log("val/box_iou", self.val_iou, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
-        self.log("val/box_acc", self.val_acc, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
+        self.log("val/box_iou", 1 - losses['iou'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
+        self.log("val/box_f1", self.val_f1, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
 
         return {"loss": loss_total, 
                 "pred_boxes": pred_boxes, "pred_mask": pred_mask,
@@ -186,25 +178,20 @@ class YoloXLitModule(LightningModule):
     def on_validation_epoch_end(self):
         # get current val acc
         jaccard = self.val_jaccard.compute()
-        # iou = torch.Tensor(self.val_iou).mean()
-        # self.val_iou = []
-        iou = self.val_iou.compute()
-        acc = self.val_acc.compute()
+        iou = torch.Tensor(self.val_iou).mean()
+        self.val_iou = []
+        # iou = self.val_iou.compute()
+        f1 = self.val_f1.compute()
         # update best so far val acc
         self.val_best_jaccard(jaccard)
         self.val_best_iou(iou)
-        self.val_best_acc(acc)
-
-        # Code to try to fix CUDA out of memory issues
-        del jaccard, iou
-        gc.collect()
-        torch.cuda.empty_cache()
+        self.val_best_f1(f1)
 
         # log `val_acc_best` as a value through `.compute()` method, instead of as a metric object
         # otherwise metric would be reset by lightning after each epoch
         self.log("val/jaccard_best", self.val_best_jaccard.compute(), prog_bar=True)
         self.log("val/iou_best", self.val_best_iou.compute(), prog_bar=True)
-        self.log("val/acc_best", self.val_best_acc.compute(), prog_bar=True)
+        self.log("val/f1_best", self.val_best_f1.compute(), prog_bar=True)
 
     def test_step(self, batch: Any, batch_idx: int):
         losses, pred_boxes, pred_mask, target_boxes, target_mask = self.model_step(batch)
@@ -213,11 +200,11 @@ class YoloXLitModule(LightningModule):
         # update and log metrics
         # update and log metrics
         self.test_loss(loss_total)
-        self.test_jaccard(pred_mask, target_mask.unsqueeze(1))
+        self.test_jaccard(pred_mask, target_mask)
         for p_b, t_b in zip(pred_boxes, target_boxes):
-            is_object = t_b[..., 0] == 1
-            self.test_acc(p_b[..., 0][is_object], t_b[..., 0][is_object])
-            self.test_iou(p_b, t_b)
+            # is_object = t_b[..., 0] == 1
+            self.test_f1(p_b[..., 0], t_b[..., 0])
+            # self.test_iou(p_b, t_b)
 
         self.log("test/loss_segment", losses['segment'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
         self.log("test/loss_object", losses['object'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
@@ -225,8 +212,8 @@ class YoloXLitModule(LightningModule):
         self.log("test/loss_total", self.test_loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
 
         self.log("test/jaccard", self.test_jaccard, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
-        self.log("test/box_iou", self.test_iou, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
-        self.log("test/box_acc", self.test_acc, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
+        self.log("test/box_iou", 1 - losses['iou'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
+        self.log("test/box_f1", self.test_f1, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
 
         return {"loss": loss_total, 
                 "pred_boxes": pred_boxes, "pred_mask": pred_mask,
