@@ -19,6 +19,7 @@ from torchvision.utils import make_grid
 from torchvision.ops import nms
 
 from src.data.airbus.components.airbus import AirbusDataset
+from src.data.airbus.components.yolo_airbus import shape2stride
 from src.utils.airbus_utils import denormalize, mask_overlay, rle_decode, mergeMask, yolo2box, rotate_nms, midpoint2corners
 
 
@@ -27,13 +28,12 @@ class YoloWandbCallback(Callback):
         # download dataset if needed
         _ = AirbusDataset(data_dir=data_path)
 
-        self.data_path = data_path
         self.n_images_to_log = n_images_to_log  # number of logged images when eval
         self.NUM_IMAGE = n_images_to_log
 
         # self.df = pd.read_csv(os.path.join(data_path, "train_ship_segmentations_v2.csv"))
 
-        image_path = os.path.join(self.data_path, "train_v2", "0006c52e8.jpg")
+        image_path = os.path.join(data_path, "train_v2", "0006c52e8.jpg")
         self.sample_image = np.array(Image.open(image_path).convert("RGB"))
         self.H, self.W, _ = self.sample_image.shape
 
@@ -47,7 +47,7 @@ class YoloWandbCallback(Callback):
         self.transformed_sample_image = transform(image=self.sample_image)['image']
 
         # Code to try to fix CUDA out of memory issues
-        del transform
+        del transform, image_path
         gc.collect()
         torch.cuda.empty_cache()
 
@@ -65,6 +65,12 @@ class YoloWandbCallback(Callback):
             b = yolo2box(box, True) / torch.Tensor([1, w, h, w, h, 1])    # shape (N, 6)
             if len(b):
                 boxes.append(b)
+
+            # Code to try to fix CUDA out of memory issues
+            del b, w, h
+            gc.collect()
+            torch.cuda.empty_cache()
+
         if len(boxes):
             boxes = torch.cat(boxes)
         else:
@@ -90,13 +96,21 @@ class YoloWandbCallback(Callback):
             # boxes.shape = [N, 6]
 
             boxes[..., -1] = boxes[..., -1] * (180 / math.pi)     # convert radian to degree
+            for box in boxes:   # draw midpoint
+                log_image = cv2.circle(log_image, box[1:3].cpu().int().tolist(), 2, (0, 0, 255), -1)
             boxes = midpoint2corners(boxes[:, 1:].cpu().numpy(), rotated_bbox=True)
             log_image = cv2.drawContours(log_image, boxes.astype(np.int64), -1, (255, 0, 0), 1)
-            
+  
         self.logger.log_image(
             key="{} prediction".format(self.process),
             images=[Image.fromarray(log_image)],
+            caption=[str(len(boxes))]
         )
+
+        # Code to try to fix CUDA out of memory issues
+        del output_box, output_mask, boxes
+        gc.collect()
+        torch.cuda.empty_cache()
 
     def on_validation_epoch_start(self, trainer, pl_module):
         self.n_images_to_log = self.NUM_IMAGE
@@ -131,23 +145,33 @@ class YoloWandbCallback(Callback):
             log_pred = mask_overlay(img, pred_mask)
             log_target = mask_overlay(img, target_mask.cpu().numpy())
 
-            target_box = [scale[idx] for scale in outputs['target_boxes']]
+            # target_box = [scale[idx] for scale in outputs['target_boxes']]
+            target_box = [outputs['target_boxes'][-1][idx]]         # get the last scale
             target_box = self.get_boxes(target_box)
-            target_box *= torch.Tensor([1, self.W, self.H, self.W, self.H, 1])     # denormalize the bounding boxes
             target_box = rotate_nms(target_box, 0.5)
+            target_box *= torch.Tensor([1, self.W, self.H, self.W, self.H, 1])     # denormalize the bounding boxes
+        
 
             pred_box = [scale[idx] for scale in outputs['pred_boxes']]
             pred_box = self.get_boxes(pred_box)
             if len(pred_box):
-                idx = torch.topk(pred_box[:, 0], min(len(pred_box), len(target_box)), dim=0).indices
-                pred_box = pred_box[idx]
+                if self.process == 'validation':
+                    idx = torch.topk(pred_box[:, 0], min(len(pred_box), len(target_box)), dim=0).indices
+                    pred_box = pred_box[idx]
+                elif self.process == 'test':
+                    pred_box = rotate_nms(pred_box)
+                
                 pred_box *= torch.Tensor([1, self.W, self.H, self.W, self.H, 1])     # denormalize the bounding boxes
 
                 pred_box[..., -1] = pred_box[..., -1] * (180 / math.pi)     # convert radian to degree
+                for box in pred_box:
+                    log_pred = cv2.circle(log_pred, box[1:3].cpu().int().tolist(), 2, (0, 0, 255), -1)
                 pred_box = midpoint2corners(pred_box[:, 1:].cpu().numpy(), rotated_bbox=True)
                 log_pred = cv2.drawContours(log_pred, pred_box.astype(np.int64), -1, (255, 0, 0), 1)
             
             target_box[..., -1] = target_box[..., -1] * (180 / math.pi)     # convert radian to degree
+            for box in target_box:
+                log_target = cv2.circle(log_target, box[1:3].cpu().int().tolist(), 2, (0, 0, 255), -1)
             target_box = midpoint2corners(target_box[:, 1:].cpu().numpy(), rotated_bbox=True)
             log_target = cv2.drawContours(log_target, target_box.astype(np.int64), -1, (255, 0, 0), 1)
 
@@ -167,6 +191,11 @@ class YoloWandbCallback(Callback):
             del pred_mask, pred_box, target_mask, target_box
             gc.collect()
             torch.cuda.empty_cache()
+        
+        # Code to try to fix CUDA out of memory issues
+        del images, ids
+        gc.collect()
+        torch.cuda.empty_cache()
 
     def on_test_batch_end(
             self, 
