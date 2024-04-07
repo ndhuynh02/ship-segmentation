@@ -158,6 +158,28 @@ def mergeMask(masks):
         return mask
 
 
+def get_weight(target:torch.Tensor, channel_dim) -> torch.Tensor:
+    """
+    calculate the class weight for each pixel in each element of the batch
+    return a Tensor with same shape as `target` 
+
+    target.shape == [B, H, W, C] if channel_dim = -1 or 3
+    target.shape == [B, C, H, W] if channel_dim = 1
+    """
+    n_dim = len(target.shape)
+    pos_count = (target == 1).sum(dim=torch.arange(1, n_dim).tolist())      # shape = [B, ]
+    neg_count = (target == 0).sum(dim=torch.arange(1, n_dim).tolist())      # shape = [B, ]
+
+    pos_weight = torch.where(pos_count != 0, neg_count / pos_count, 1.0)    # shape = [B, ]
+
+    weight = torch.ones_like(target).to(target.device)    
+
+    for i in range(len(weight)):
+        weight[i] = torch.where(target[i] == 1, pos_weight[i], 1.0)
+    
+    return weight    # shape = target.shape
+
+
 def imshow(image, masks=None, bboxes=None, bbox_format="corners", rotated_bbox=False,  title=None):
     assert bbox_format in ["midpoint", "corners"]
     plt.figure(figsize=(6, 6))
@@ -229,7 +251,7 @@ def imshow_batch(images, masks=None, bboxes=None, grid_shape=(8, 8)):
     plt.show()
 
 
-def yolo2box(box: torch.Tensor, keep_obj_prob=False, obj_thresh=0.5) -> torch.Tensor:
+def yolo2box(box: torch.Tensor, keep_obj_prob=False, obj_thresh=0.7) -> torch.Tensor:
     # box has shape H, W, C
     # keep_obj_prob tells whether want to keep the is_object probability
 
