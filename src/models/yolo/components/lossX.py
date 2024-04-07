@@ -4,6 +4,9 @@ import torch
 from torch import nn
 from mmrotate.models.losses.rotated_iou_loss import RotatedIoULoss
 
+from src.models.loss_function.focalloss import FocalLoss, FocalWithLogitsLoss
+from src.utils.airbus_utils import get_weight
+
 
 class YoloXLoss(nn.Module):
     def __init__(self, mode:str = 'linear') -> None:
@@ -18,15 +21,26 @@ class YoloXLoss(nn.Module):
         """
         assert mode in ['linear', 'square', 'log']
 
-        self.obj_loss = nn.BCELoss()
+        self.obj_loss = FocalLoss(alpha=0.25, gamma=2, reduction='mean')
+        # self.obj_loss = nn.BCELoss()
         self.box_loss = RotatedIoULoss(mode=mode)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        self.sigmoid = nn.Sigmoid()
+        # self.sigmoid = nn.Sigmoid()
+
+    def update_weight(self, weight: torch.FloatTensor = None):
+        if weight is not None:
+            if isinstance(self.obj_loss, (nn.BCELoss, nn.BCEWithLogitsLoss)):
+                self.obj_loss.weight = weight
+            elif isinstance(self.obj_loss, (FocalLoss, FocalWithLogitsLoss)):
+                self.obj_loss.update_weight(weight)
 
     def update_pos_weight(self, pos_weight: torch.FloatTensor = None):
-        if pos_weight is not None and isinstance(self.obj_loss, nn.BCEWithLogitsLoss):
-            self.obj_loss.pos_weight = pos_weight
+        if pos_weight is not None:
+            if isinstance(self.obj_loss, nn.BCEWithLogitsLoss):
+                self.obj_loss.pos_weight = pos_weight
+            elif isinstance(self.obj_loss, FocalWithLogitsLoss):
+                self.obj_loss.update_pos_weight(pos_weight)
 
     def forward(self, predictions, target):
         """
@@ -41,20 +55,11 @@ class YoloXLoss(nn.Module):
         #   FOR OBJECT LOSS    #
         # ======================= #
 
-        # cnt1 = obj.sum().item()  # count number of objects in image
-        # cnt0 = target[..., 0].numel() - cnt1
-        # if cnt1 != 0:
-        #     BCE_pos_weight = torch.FloatTensor([1.0 * cnt0 / cnt1]).to(device=self.device)
-        # else:
-        #     BCE_pos_weight = torch.FloatTensor([1.0]).to(device=self.device)
-        # self.update_pos_weight(pos_weight=BCE_pos_weight)
-
-        # del cnt0, cnt1
-        # gc.collect()
-        # torch.cuda.empty_cache()
+        weight = get_weight(target[..., 0:1], channel_dim=-1)
+        self.update_weight(weight=weight)
 
         object_loss = self.obj_loss(
-            predictions[..., 0][obj], target[..., 0][obj],
+            predictions[..., 0:1], target[..., 0:1],
         )
 
         # ==================== #
@@ -102,7 +107,7 @@ if __name__ == "__main__":
     metric = IoU()
 
     # LOSS
-    # print("Loss:", loss(boxes[-1].to(device), bbox_targets[-1].unsqueeze(0).to(device)))
+    print("Loss:", loss(boxes[-1].to(device), bbox_targets[-1].unsqueeze(0).to(device)))
 
     # METRIC
     box = boxes[-1].detach()
