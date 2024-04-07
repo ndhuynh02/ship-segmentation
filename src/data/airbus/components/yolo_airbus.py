@@ -21,6 +21,8 @@ stride2shape = {
     16: 48,
     32: 24
 }
+shape2stride = {v: k for k, v in stride2shape.items()}
+
 # from 96, there are no overlaped ships
 
 class YoloAirbus(Dataset):
@@ -104,7 +106,7 @@ class YoloAirbus(Dataset):
             bboxes = np.array(transformed['bboxes'])
 
         image = transformed['image']
-        mask = mergeMask(np.array(transformed['masks'], dtype=np.uint8))     # merge to perform semantic segmentation
+        mask = torch.from_numpy(mergeMask(np.array(transformed['masks'], dtype=np.uint8)))     # merge to perform semantic segmentation
 
         bbox_targets = [torch.zeros((scale, scale, num_output_elements)) for scale in self.scales]
         
@@ -126,10 +128,18 @@ class YoloAirbus(Dataset):
 
                 bbox_targets[scale_idx][i, j, 1:] = box_coordinates
 
-        return image, mask, bbox_targets, file_id
+        return image, mask.unsqueeze(0), bbox_targets, file_id
 
 
 if __name__ == "__main__":
-    data = YoloAirbus(AirbusDataset(undersample=-1, subset=100))
+    data = YoloAirbus(AirbusDataset(undersample=-1, subset=100, bbox_format='midpoint', rotated_bbox=True))
+    image, mask, boxes, id = data[0]
+
+    print("Image shape", image.shape)
+    print("Mask shape", mask.shape)
+
+    print("Number of scale", len(boxes))
+    for box in boxes:
+        print("\t", box.shape)
 
     
