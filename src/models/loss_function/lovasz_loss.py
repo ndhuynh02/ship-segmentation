@@ -81,10 +81,14 @@ class LovaszLoss(nn.Module):
 
 
 class BCE_Lovasz(nn.Module):
-    def __init__(self, pos_weight: torch.FloatTensor = None):
+    def __init__(self, weight: torch.FloatTensor = None, pos_weight: torch.FloatTensor = None):
         super().__init__()
-        self.nll_loss = BCEWithLogitsLoss(pos_weight=pos_weight)
+        self.nll_loss = BCEWithLogitsLoss(weight=weight, pos_weight=pos_weight)
 
+    def update_weight(self, weight: torch.FloatTensor = None):
+        if weight is not None:
+            self.nll_loss.weight = weight
+    
     def update_pos_weight(self, pos_weight: torch.FloatTensor = None):
         if pos_weight is not None:
             self.nll_loss.pos_weight = pos_weight
