@@ -6,7 +6,7 @@ from src.utils.airbus_utils import yolo2box
 class IoU(Metric):
     def __init__(self, object_threshold=0.5):
         super().__init__()
-        self.add_state("iou", default=torch.tensor(0), dist_reduce_fx="sum")
+        self.add_state("iou", default=torch.tensor(0.0), dist_reduce_fx="sum")
         self.add_state("total", default=torch.tensor(0), dist_reduce_fx="sum")
 
         self.object_threshold = object_threshold
@@ -22,7 +22,7 @@ class IoU(Metric):
             p = p[idx]
             
             iou = box_iou_rotated(p[..., 1:], t[..., 1:], aligned=False, clockwise=True)
-            self.iou + torch.max(iou, dim=0).values.sum()
+            self.iou += torch.max(iou, dim=0).values.sum()
             self.total += len(p)
 
     def compute(self) -> torch.Tensor:
