@@ -43,7 +43,7 @@ class UNet_Up_Block(torch.nn.Module):
         return self.u_conv(cat_p)  # x_in
 
 
-class Unet34(torch.nn.Module):
+class Unet34Origin(torch.nn.Module):
     def __init__(self, ckpt_path=None, arch=None):
         super().__init__()
         self.ckpt_path = ckpt_path
@@ -101,7 +101,7 @@ class Unet34(torch.nn.Module):
 
 if __name__ == "__main__":
     x = torch.rand((1, 3, 768, 768))
-    model = Unet34()
+    model = Unet34Origin()
     output = model(x)
     for out in output:
         print(out.shape)

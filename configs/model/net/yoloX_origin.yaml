@@ -1,0 +1,4 @@
+_target_: src.models.yolo.components.yoloX_origin.YoloXOrigin
+ckpt_path: null
+arch: null
+rotated_bbox: true
