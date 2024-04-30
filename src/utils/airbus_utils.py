@@ -281,9 +281,9 @@ def rotate_nms(boxes: torch.Tensor, iou_threshold=0.7):
                 box[1:].unsqueeze(0), 
                 aligned=True, clockwise=True
             ).item()
-            < iou_threshold
+            <= iou_threshold
         ]
 
         bboxes_after_nms.append(chosen_box)
 
-    return torch.cat(bboxes_after_nms).view(-1, 6)
+    return torch.cat(bboxes_after_nms).view(-1, 6) if len(bboxes_after_nms) else torch.empty((0, 6))
