@@ -97,7 +97,7 @@ class YoloX(torch.nn.Module):
         box = box.permute(0, 2, 3, 1)   # B, H, W, C
         box[..., :3] = torch.sigmoid(box[..., :3])
         box[..., 3:5] = torch.exp(box[..., 3:5]) * stride
-        box[..., -1] = box[..., -1] % math.pi   # get angle radian prediction
+        box[..., -1] = box[..., -1] % 180 * math.pi / 180    # get angle radian prediction
 
         return box
 
