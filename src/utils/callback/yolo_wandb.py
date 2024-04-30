@@ -24,16 +24,18 @@ from src.utils.airbus_utils import denormalize, mask_overlay, rle_decode, mergeM
 
 
 class YoloWandbCallback(Callback):
-    def __init__(self, data_path: str = "data/airbus", n_images_to_log: int = 5):
+    def __init__(self, data_path: str = "data/airbus", obj_thresh=0.9, nms_thresh=0, n_images_to_log: int = 5):
         # download dataset if needed
         _ = AirbusDataset(data_dir=data_path)
 
+        self.obj_thresh = obj_thresh
+        self.nms_thresh = nms_thresh
         self.n_images_to_log = n_images_to_log  # number of logged images when eval
         self.NUM_IMAGE = n_images_to_log
 
         # self.df = pd.read_csv(os.path.join(data_path, "train_ship_segmentations_v2.csv"))
 
-        image_path = os.path.join(data_path, "train_v2", "0006c52e8.jpg")
+        image_path = os.path.join(data_path, "train_v2", "e847c1f39.jpg")
         self.sample_image = np.array(Image.open(image_path).convert("RGB"))
         self.H, self.W, _ = self.sample_image.shape
 
@@ -51,7 +53,7 @@ class YoloWandbCallback(Callback):
         gc.collect()
         torch.cuda.empty_cache()
 
-    def get_boxes(self, output_box):
+    def get_boxes(self, output_box, obj_thresh=0.7):
         # return the normalized bounding boxes
         boxes = []
         for box in output_box:      # look at every scales
@@ -62,7 +64,7 @@ class YoloWandbCallback(Callback):
             
             # normalize x_cen, y_cen, width, height
             # but keep confident score and angle
-            b = yolo2box(box, True) / torch.Tensor([1, w, h, w, h, 1])    # shape (N, 6)
+            b = yolo2box(box, True, obj_thresh) / torch.Tensor([1, w, h, w, h, 1])    # shape (N, 6)
             if len(b):
                 boxes.append(b)
 
@@ -89,15 +91,21 @@ class YoloWandbCallback(Callback):
  
         log_image = mask_overlay(self.sample_image, output_mask.cpu().numpy().astype(np.uint8))
 
-        boxes = self.get_boxes(output_box)
+        boxes = self.get_boxes(output_box, self.obj_thresh)
         if len(boxes):
-            boxes = rotate_nms(boxes)
+            boxes = rotate_nms(boxes, self.nms_thresh)
             boxes *= torch.Tensor([1, self.W, self.H, self.W, self.H, 1])     # denormalize the bounding boxes
             # boxes.shape = [N, 6]
 
             boxes[..., -1] = boxes[..., -1] * (180 / math.pi)     # convert radian to degree
             for box in boxes:   # draw midpoint
                 log_image = cv2.circle(log_image, box[1:3].cpu().int().tolist(), 2, (0, 0, 255), -1)
+                # log_image = cv2.putText(log_image, 
+                #                         str(round(box[0].cpu().item(), 2)), 
+                #                         box[1:3].cpu().int().tolist(), 
+                #                         cv2.FONT_HERSHEY_SIMPLEX, 
+                #                         1, (0, 0, 255), 1,
+                #                         cv2.LINE_AA)
             boxes = midpoint2corners(boxes[:, 1:].cpu().numpy(), rotated_bbox=True)
             log_image = cv2.drawContours(log_image, boxes.astype(np.int64), -1, (255, 0, 0), 1)
   
@@ -147,25 +155,31 @@ class YoloWandbCallback(Callback):
 
             # target_box = [scale[idx] for scale in outputs['target_boxes']]
             target_box = [outputs['target_boxes'][-1][idx]]         # get the last scale
-            target_box = self.get_boxes(target_box)
-            target_box = rotate_nms(target_box, 0.5)
+            target_box = self.get_boxes(target_box, 0.8)
+            target_box = rotate_nms(target_box, 0.3)
             target_box *= torch.Tensor([1, self.W, self.H, self.W, self.H, 1])     # denormalize the bounding boxes
         
-
             pred_box = [scale[idx] for scale in outputs['pred_boxes']]
-            pred_box = self.get_boxes(pred_box)
             if len(pred_box):
                 if self.process == 'validation':
+                    pred_box = self.get_boxes(pred_box, 0.5)
                     idx = torch.topk(pred_box[:, 0], min(len(pred_box), len(target_box)), dim=0).indices
                     pred_box = pred_box[idx]
                 elif self.process == 'test':
-                    pred_box = rotate_nms(pred_box)
+                    pred_box = self.get_boxes(pred_box, self.obj_thresh)
+                    pred_box = rotate_nms(pred_box, self.nms_thresh)
                 
                 pred_box *= torch.Tensor([1, self.W, self.H, self.W, self.H, 1])     # denormalize the bounding boxes
 
                 pred_box[..., -1] = pred_box[..., -1] * (180 / math.pi)     # convert radian to degree
                 for box in pred_box:
                     log_pred = cv2.circle(log_pred, box[1:3].cpu().int().tolist(), 2, (0, 0, 255), -1)
+                    # log_pred = cv2.putText(log_pred, 
+                    #                     str(round(box[0].cpu().item(), 2)), 
+                    #                     box[1:3].cpu().int().tolist(), 
+                    #                     cv2.FONT_HERSHEY_SIMPLEX, 
+                    #                     1, (0, 0, 255), 1,
+                    #                     cv2.LINE_AA)
                 pred_box = midpoint2corners(pred_box[:, 1:].cpu().numpy(), rotated_bbox=True)
                 log_pred = cv2.drawContours(log_pred, pred_box.astype(np.int64), -1, (255, 0, 0), 1)
             

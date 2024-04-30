@@ -1,4 +1,6 @@
 wandb_callback:
   _target_: src.utils.callback.yolo_wandb.YoloWandbCallback
   data_path: ${paths.data_dir}/airbus
+  obj_thresh: 0.9
+  nms_thresh: 0
   n_images_to_log: 1
