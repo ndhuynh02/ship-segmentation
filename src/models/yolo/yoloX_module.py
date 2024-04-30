@@ -55,9 +55,9 @@ class YoloXLitModule(LightningModule):
         self.test_jaccard = JaccardIndex(task="binary", num_classes=2)
 
         # metric for object detection
-        self.train_f1 = BinaryF1Score(threshold=0.7)
-        self.val_f1 = BinaryF1Score(threshold=0.7)
-        self.test_f1 = BinaryF1Score(threshold=0.7)
+        self.train_f1 = BinaryF1Score(threshold=0.9)
+        self.val_f1 = BinaryF1Score(threshold=0.9)
+        self.test_f1 = BinaryF1Score(threshold=0.9)
         self.val_iou = []
 
         # self.train_iou = IoU()
@@ -102,13 +102,16 @@ class YoloXLitModule(LightningModule):
 
         loss_object = 0
         loss_iou = 0
+        loss_l1 = 0
         # calulate the loss for all detect scales
         for p_b, t_b in zip(pred_boxes, y_boxes):
             l = self.criterion_detect(p_b, t_b)
             loss_object += l['object']
             loss_iou += l['iou']
+            loss_l1 += l['l1']
         losses['object'] = loss_object / len(pred_boxes)
         losses['iou'] = loss_iou / len(pred_boxes)
+        losses['l1'] = loss_l1 / len(pred_boxes)
 
         # Code to try to fix CUDA out of memory issues
         del x
@@ -138,6 +141,7 @@ class YoloXLitModule(LightningModule):
         self.log("train/loss_segment", losses['segment'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
         self.log("train/loss_object", losses['object'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
         self.log("train/loss_iou", losses['iou'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
+        self.log("train/loss_l1", losses['l1'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
         self.log("train/loss_total", self.train_loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
 
         self.log("train/jaccard", self.train_jaccard, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
@@ -165,6 +169,7 @@ class YoloXLitModule(LightningModule):
         self.log("val/loss_segment", losses['segment'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
         self.log("val/loss_object", losses['object'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
         self.log("val/loss_iou", losses['iou'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
+        self.log("val/loss_l1", losses['l1'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
         self.log("val/loss_total", self.val_loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
 
         self.log("val/jaccard", self.val_jaccard, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
@@ -209,6 +214,7 @@ class YoloXLitModule(LightningModule):
         self.log("test/loss_segment", losses['segment'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
         self.log("test/loss_object", losses['object'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
         self.log("test/loss_iou", losses['iou'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
+        self.log("test/loss_l1", losses['l1'], on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
         self.log("test/loss_total", self.test_loss, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))
 
         self.log("test/jaccard", self.test_jaccard, on_step=False, on_epoch=True, prog_bar=True, batch_size=len(batch))

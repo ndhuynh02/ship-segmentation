@@ -24,6 +24,7 @@ class YoloXLoss(nn.Module):
         self.obj_loss = FocalLoss(alpha=0.25, gamma=2, reduction='mean')
         # self.obj_loss = nn.BCELoss()
         self.box_loss = RotatedIoULoss(mode=mode)
+        self.l1_loss = nn.L1Loss()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # self.sigmoid = nn.Sigmoid()
@@ -78,9 +79,27 @@ class YoloXLoss(nn.Module):
         iou_loss_2 = self.box_loss(predictions[..., 1:6][obj], target_2[..., 1:6][obj])   
         iou_loss = torch.minimum(iou_loss_1, iou_loss_2) 
 
+        # ==================== #
+        #   FOR L1 LOSS    #
+        # ==================== #
+
+        # eps = 1e-8
+        # l1_loss_1 = self.l1_loss(
+        #     torch.cat([predictions[..., 1:3][obj], torch.log(predictions[..., 3:5][obj] / stride + eps), predictions[..., -1] / math.pi], dim=-1),
+        #     torch.cat([target[..., 1:3][obj], torch.log(target[..., 3:5][obj] / stride + eps), target[..., -1] / math.pi], dim=-1)
+        # )
+        # l1_loss_2 = self.l1_loss(
+        #     torch.cat([predictions[..., 1:3][obj], torch.log(predictions[..., 3:5][obj] / stride + eps), predictions[..., -1] / math.pi], dim=-1),
+        #     torch.cat([target_2[..., 1:3][obj], torch.log(target_2[..., 3:5][obj] / stride + eps), target_2[..., -1] / math.pi], dim=-1)
+        # )
+        l1_loss_1 = self.l1_loss(predictions[..., 1:6][obj], target[..., 1:6][obj])
+        l1_loss_2 = self.l1_loss(predictions[..., 1:6][obj], target_2[..., 1:6][obj])
+        l1_loss = torch.minimum(l1_loss_1, l1_loss_2) 
+
         return {
             'object': object_loss,
-            'iou': iou_loss.mean() 
+            'iou': iou_loss.mean(),
+            'l1': l1_loss
         }
     
 
