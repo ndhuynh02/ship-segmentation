@@ -20,11 +20,11 @@ from torchvision.ops import nms
 
 from src.data.airbus.components.airbus import AirbusDataset
 from src.data.airbus.components.yolo_airbus import shape2stride
-from src.utils.airbus_utils import denormalize, mask_overlay, rle_decode, mergeMask, yolo2box, rotate_nms, midpoint2corners
+from src.utils.airbus_utils import denormalize, mask_overlay, rle_decode, mergeMask, yolo2box, rotate_nms, midpoint2corners, get_boxes
 
 
 class YoloWandbCallback(Callback):
-    def __init__(self, data_path: str = "data/airbus", obj_thresh=0.9, nms_thresh=0, n_images_to_log: int = 5):
+    def __init__(self, data_path: str = "data/airbus", obj_thresh=0.8, nms_thresh=0, n_images_to_log: int = 5):
         # download dataset if needed
         _ = AirbusDataset(data_dir=data_path)
 
@@ -53,33 +53,6 @@ class YoloWandbCallback(Callback):
         gc.collect()
         torch.cuda.empty_cache()
 
-    def get_boxes(self, output_box, obj_thresh=0.7):
-        # return the normalized bounding boxes
-        boxes = []
-        for box in output_box:      # look at every scales
-            # scales.shape = [B, H, W, C]
-            box = box.squeeze(0).detach().cpu()
-            # box.shape = [H, W, C]
-            w, h = box.shape[:2]
-            
-            # normalize x_cen, y_cen, width, height
-            # but keep confident score and angle
-            b = yolo2box(box, True, obj_thresh) / torch.Tensor([1, w, h, w, h, 1])    # shape (N, 6)
-            if len(b):
-                boxes.append(b)
-
-            # Code to try to fix CUDA out of memory issues
-            del b, w, h
-            gc.collect()
-            torch.cuda.empty_cache()
-
-        if len(boxes):
-            boxes = torch.cat(boxes)
-        else:
-            boxes = torch.Tensor([])
-        
-        return boxes
-
     def setup(self, trainer, pl_module, stage):
         self.logger = trainer.logger
         
@@ -88,10 +61,12 @@ class YoloWandbCallback(Callback):
 
         output_box, output_mask = trainer.model(self.transformed_sample_image.unsqueeze(0).to(trainer.model.device))
         output_mask = output_mask.detach()
+        output_mask = torch.sigmoid(output_mask) >= 0.5
+        output_mask = output_mask.cpu().numpy().astype(np.uint8)
  
-        log_image = mask_overlay(self.sample_image, output_mask.cpu().numpy().astype(np.uint8))
+        log_image = mask_overlay(self.sample_image, output_mask)
 
-        boxes = self.get_boxes(output_box, self.obj_thresh)
+        boxes = get_boxes(output_box, self.obj_thresh)
         if len(boxes):
             boxes = rotate_nms(boxes, self.nms_thresh)
             boxes *= torch.Tensor([1, self.W, self.H, self.W, self.H, 1])     # denormalize the bounding boxes
@@ -155,18 +130,18 @@ class YoloWandbCallback(Callback):
 
             # target_box = [scale[idx] for scale in outputs['target_boxes']]
             target_box = [outputs['target_boxes'][-1][idx]]         # get the last scale
-            target_box = self.get_boxes(target_box, 0.8)
+            target_box = get_boxes(target_box, 0.8)
             target_box = rotate_nms(target_box, 0.3)
             target_box *= torch.Tensor([1, self.W, self.H, self.W, self.H, 1])     # denormalize the bounding boxes
         
             pred_box = [scale[idx] for scale in outputs['pred_boxes']]
             if len(pred_box):
                 if self.process == 'validation':
-                    pred_box = self.get_boxes(pred_box, 0.5)
+                    pred_box = get_boxes(pred_box, 0.5)
                     idx = torch.topk(pred_box[:, 0], min(len(pred_box), len(target_box)), dim=0).indices
                     pred_box = pred_box[idx]
                 elif self.process == 'test':
-                    pred_box = self.get_boxes(pred_box, self.obj_thresh)
+                    pred_box = get_boxes(pred_box, self.obj_thresh)
                     pred_box = rotate_nms(pred_box, self.nms_thresh)
                 
                 pred_box *= torch.Tensor([1, self.W, self.H, self.W, self.H, 1])     # denormalize the bounding boxes

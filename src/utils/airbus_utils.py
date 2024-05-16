@@ -93,9 +93,13 @@ def mask_overlay(image, mask, color=(0, 1, 0)):
     mask = np.dstack((mask, mask, mask)) * np.array(color, dtype=np.uint8) * 255
     weighted_sum = cv2.addWeighted(mask, 0.5, image, 0.5, 0.0)
     img = image.copy()
-    ind = mask[:, :, 1] > 0
-    img[ind] = weighted_sum[ind]
+    # ind = mask[:, :, 1] > 0
+    # img[ind] = weighted_sum[ind]
 
+    for i in range(3):
+        ind = mask[:, :, i] > 0
+        img[ind] = weighted_sum[ind]
+    
     del mask, weighted_sum, ind
     gc.collect()
     torch.cuda.empty_cache()
@@ -184,8 +188,8 @@ def imshow(image, masks=None, bboxes=None, bbox_format="corners", rotated_bbox=F
     assert bbox_format in ["midpoint", "corners"]
     plt.figure(figsize=(6, 6))
     img = image.copy()
-    bounding_boxes = bboxes.copy()
     if bboxes is not None:
+        bounding_boxes = bboxes.copy()
         if not rotated_bbox:
             if bbox_format == "midpoint":
                 # convert midpoint to conners
@@ -199,6 +203,8 @@ def imshow(image, masks=None, bboxes=None, bbox_format="corners", rotated_bbox=F
                 bounding_boxes[..., -1] = bounding_boxes[..., -1] * (180 / math.pi)     # convert radian to degree
                 bounding_boxes = midpoint2corners(bounding_boxes, rotated_bbox=True)
             img = cv2.drawContours(img, bounding_boxes.astype(np.int64), -1, (255, 0, 0), 1)
+
+        del bounding_boxes
             
     if masks is not None:
         if len(masks.shape) == 2:
@@ -212,7 +218,7 @@ def imshow(image, masks=None, bboxes=None, bbox_format="corners", rotated_bbox=F
     # plt.savefig("foo.png", bbox_inches='tight')
     plt.show()
 
-    del img, bounding_boxes
+    del img
 
 
 def denormalize(x, mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]) -> torch.Tensor:
@@ -264,6 +270,34 @@ def yolo2box(box: torch.Tensor, keep_obj_prob=False, obj_thresh=0.7) -> torch.Te
     if not keep_obj_prob:
         result = result[..., 1:]
     return result
+
+
+def get_boxes(output_box, obj_thresh=0.7):
+        # return the normalized bounding boxes
+        boxes = []
+        for box in output_box:      # look at every scales
+            # scales.shape = [B, H, W, C]
+            box = box.squeeze(0).detach().cpu()
+            # box.shape = [H, W, C]
+            h, w = box.shape[:2]
+            
+            # normalize x_cen, y_cen, width, height
+            # but keep confident score and angle
+            b = yolo2box(box, True, obj_thresh) / torch.Tensor([1, w, h, w, h, 1])    # shape (N, 6)
+            if len(b):
+                boxes.append(b)
+
+            # Code to try to fix CUDA out of memory issues
+            del b, w, h
+            gc.collect()
+            torch.cuda.empty_cache()
+
+        if len(boxes):
+            boxes = torch.cat(boxes)
+        else:
+            boxes = torch.Tensor([])
+        
+        return boxes
 
 
 def rotate_nms(boxes: torch.Tensor, iou_threshold=0.7):
