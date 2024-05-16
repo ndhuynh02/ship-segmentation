@@ -12,7 +12,7 @@ import math
 
 from src.utils.airbus_utils import corners2midpoint, midpoint2corners, mergeMask
 
-strides = [16, 8, 4]
+strides = [8, 4, 2]
 stride2shape = {
     1: 768,
     2: 384,
@@ -22,6 +22,14 @@ stride2shape = {
     32: 24
 }
 shape2stride = {v: k for k, v in stride2shape.items()}
+stride2channel = {
+    1: 768,
+    2: 64,
+    4: 64,
+    8: 128,
+    16: 256,
+    32: 512
+}
 
 # from 96, there are no overlaped ships
 
