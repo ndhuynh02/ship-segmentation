@@ -5,7 +5,7 @@ from albumentations import Compose
 from albumentations.pytorch.transforms import ToTensorV2
 from torch.utils.data import Dataset
 
-from data.airbus.components.airbus import AirbusDataset
+from src.data.airbus.components.airbus import AirbusDataset
 import torch
 import numpy as np
 import math

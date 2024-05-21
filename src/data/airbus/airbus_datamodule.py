@@ -6,8 +6,8 @@ from pytorch_lightning import LightningDataModule
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, Dataset, Subset, random_split
 
-from data.airbus.components.airbus import AirbusDataset
-from data.airbus.components.transform_airbus import TransformAirbus
+from src.data.airbus.components.airbus import AirbusDataset
+from src.data.airbus.components.transform_airbus import TransformAirbus
 from src.utils.airbus_utils import imshow_batch
 
 
