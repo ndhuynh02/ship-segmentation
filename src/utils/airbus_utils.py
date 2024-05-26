@@ -321,3 +321,32 @@ def rotate_nms(boxes: torch.Tensor, iou_threshold=0.7):
         bboxes_after_nms.append(chosen_box)
 
     return torch.cat(bboxes_after_nms).view(-1, 6) if len(bboxes_after_nms) else torch.empty((0, 6))
+
+
+def omit_redundant_boxes(boxes: torch.Tensor, mask: torch.Tensor):
+    contours, _ = cv2.findContours(mask.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE) 
+
+    # keep boxes that have midpoint inside a contour
+    box_red = []
+    for i, c in enumerate(contours):
+        for b in boxes:
+            point = b[1:3].int().tolist()
+            is_in = cv2.pointPolygonTest(c, point, False) == 1
+            if is_in:
+                box_red.append(b.tolist())
+
+    box_red = torch.Tensor(box_red)
+
+    return box_red
+
+
+def box2objMask(boxes):
+    scales = [96, 192, 384]
+    bbox_targets = [torch.zeros((scale, scale)) for scale in scales]
+    for box in boxes:
+        obj, x, y = box[:3] / torch.Tensor([1, 768, 768])    # is_obj, x, y, w, h, a
+        for scale_idx, scale in enumerate(scales):
+            i, j = int(scale * (y)), int(scale * (x))   # find the cell contains midpoint
+            bbox_targets[scale_idx][i, j] = obj    # is_object=True
+
+    return bbox_targets
