@@ -16,11 +16,11 @@ from pytorch_lightning.callbacks import Callback
 from pytorch_lightning.utilities.types import STEP_OUTPUT
 from torchvision.utils import make_grid
 
-from torchvision.ops import nms
+from torchmetrics.classification import BinaryF1Score, BinaryPrecision, BinaryRecall
 
 from src.data.airbus.components.airbus import AirbusDataset
 from src.data.airbus.components.yolo_airbus import shape2stride
-from src.utils.airbus_utils import denormalize, mask_overlay, rle_decode, mergeMask, yolo2box, rotate_nms, midpoint2corners, get_boxes
+from src.utils.airbus_utils import denormalize, mask_overlay, rle_decode, mergeMask, yolo2box, rotate_nms, midpoint2corners, get_boxes, omit_redundant_boxes, box2objMask
 
 
 class YoloWandbCallback(Callback):
@@ -52,6 +52,15 @@ class YoloWandbCallback(Callback):
         del transform, image_path
         gc.collect()
         torch.cuda.empty_cache()
+
+        self.val_f1 = BinaryF1Score(threshold=0.9)
+        self.test_f1 = BinaryF1Score(threshold=0.9)
+
+        self.val_precision = BinaryPrecision(threshold=0.9)
+        self.test_precision = BinaryPrecision(threshold=0.9)
+
+        self.val_recall = BinaryRecall(threshold=0.9)
+        self.test_recall = BinaryRecall(threshold=0.9)
 
     def setup(self, trainer, pl_module, stage):
         self.logger = trainer.logger
@@ -116,9 +125,7 @@ class YoloWandbCallback(Callback):
         ids = batch[-1]
         images = denormalize(torch.Tensor(images))
 
-        for idx, (img, pred_mask, target_mask, id) in enumerate(zip(images, outputs['pred_mask'], outputs['target_mask'], ids)):
-            if self.n_images_to_log <= 0:
-                break
+        for idx, (img, pred_mask, target_mask, id_) in enumerate(zip(images, outputs['pred_mask'], outputs['target_mask'], ids)):
             # C, H, W -> H, W, C
             img = (img.permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
 
@@ -147,6 +154,19 @@ class YoloWandbCallback(Callback):
                 pred_box *= torch.Tensor([1, self.W, self.H, self.W, self.H, 1])     # denormalize the bounding boxes
 
                 pred_box[..., -1] = pred_box[..., -1] * (180 / math.pi)     # convert radian to degree
+
+                obj_mask_pred = box2objMask(omit_redundant_boxes(pred_box, pred_mask.squeeze()))
+                obj_mask_target = box2objMask(target_box)
+                for p_b, t_b in zip(obj_mask_pred, obj_mask_target):
+                    if self.process == 'validation':
+                        self.val_precision(p_b, t_b)
+                        self.val_recall(p_b, t_b)
+                        self.val_f1(p_b, t_b)
+                    elif self.process == 'test':
+                        self.test_precision(p_b, t_b)
+                        self.test_recall(p_b, t_b)
+                        self.test_f1(p_b, t_b)
+
                 for box in pred_box:
                     log_pred = cv2.circle(log_pred, box[1:3].cpu().int().tolist(), 2, (0, 0, 255), -1)
                     # log_pred = cv2.putText(log_pred, 
@@ -164,15 +184,16 @@ class YoloWandbCallback(Callback):
             target_box = midpoint2corners(target_box[:, 1:].cpu().numpy(), rotated_bbox=True)
             log_target = cv2.drawContours(log_target, target_box.astype(np.int64), -1, (255, 0, 0), 1)
 
-            self.logger.log_image(
-                key="{} prediction".format(self.process),
-                images=[
-                    Image.fromarray(img),
-                    Image.fromarray(log_pred),
-                    Image.fromarray(log_target),
-                ],
-                caption=[id + "-Real", id + " - " + str(len(pred_box)) + " - Predict", id + " - " + str(len(target_box)) + " - GroundTruth"],
-            )
+            if self.n_images_to_log > 0:
+                self.logger.log_image(
+                    key="{} prediction".format(self.process),
+                    images=[
+                        Image.fromarray(img),
+                        Image.fromarray(log_pred),
+                        Image.fromarray(log_target),
+                    ],
+                    caption=[id_ + "-Real", id_ + " - " + str(len(pred_box)) + " - Predict", id_ + " - " + str(len(target_box)) + " - GroundTruth"],
+                )   
 
             self.n_images_to_log -= 1
 
@@ -180,7 +201,7 @@ class YoloWandbCallback(Callback):
             del pred_mask, pred_box, target_mask, target_box
             gc.collect()
             torch.cuda.empty_cache()
-        
+
         # Code to try to fix CUDA out of memory issues
         del images, ids
         gc.collect()
@@ -197,3 +218,13 @@ class YoloWandbCallback(Callback):
         self.n_images_to_log = self.NUM_IMAGE
         self.process = "test"
         self.on_validation_batch_end(trainer, pl_module, outputs, batch, batch_idx)
+
+    def on_validation_epoch_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule):
+        self.logger.log_metrics({"val/box_precision_post": self.val_precision.compute().item()})
+        self.logger.log_metrics({"val/box_recall_post": self.val_recall.compute().item()})
+        self.logger.log_metrics({"val/box_f1_post": self.val_f1.compute().item()})
+
+    def on_test_epoch_end(self, trainer: pl.Trainer, pl_module: pl.LightningModule):
+        self.logger.log_metrics({"test/box_precision_post": self.test_precision.compute().item()})
+        self.logger.log_metrics({"test/box_recall_post": self.test_recall.compute().item()})
+        self.logger.log_metrics({"test/box_f1_post": self.test_f1.compute().item()})
