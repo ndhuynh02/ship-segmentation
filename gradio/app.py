@@ -126,7 +126,7 @@ if __name__ == "__main__":
     import gradio as gr
 
     dropDown = gr.Dropdown(
-            ["semantic", "instance"], label="Type of outputs", value='instance'
+            ["semantic", "instance"], label="Segmentation type", value='instance'
         )
 
     demo = gr.Interface(fn=ship_segmenter, 
