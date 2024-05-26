@@ -90,6 +90,7 @@ class YoloXLitModule(LightningModule):
         self.val_jaccard.reset()
         self.val_f1.reset()
         self.val_precision.reset()
+        self.val_recall.reset()
         self.val_iou = []
         # self.val_iou.reset()
         self.val_best_jaccard.reset()
