@@ -1,8 +1,6 @@
 import pyrootutils
 pyrootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
-import argparse
 
-from PIL import Image
 import numpy as np
 import torch
 import cv2

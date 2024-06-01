@@ -12,6 +12,7 @@ Pillow
 opencv-python
 albumentations
 mmrotate
+gradio
 
 # --------- hydra --------- #
 hydra-core #==1.3.2
