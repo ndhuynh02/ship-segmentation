@@ -3,30 +3,27 @@ from pathlib import Path
 import pytest
 import torch
 
-from src.data.mnist_datamodule import MNISTDataModule
+from data.airbus.airbus_datamodule import AirbusDataModule
 
 
-@pytest.mark.parametrize("batch_size", [32, 128])
-def test_mnist_datamodule(batch_size):
-    data_dir = "data/"
+@pytest.mark.parametrize("batch_size", [4, 8])
+def test_airbus_datamodule(batch_size):
+    data_dir = "data/airbus"
 
-    dm = MNISTDataModule(data_dir=data_dir, batch_size=batch_size)
-    dm.prepare_data()
+    dm = AirbusDataModule(data_dir=data_dir, batch_size=batch_size)
 
     assert not dm.data_train and not dm.data_val and not dm.data_test
-    assert Path(data_dir, "MNIST").exists()
-    assert Path(data_dir, "MNIST", "raw").exists()
+    assert Path(data_dir).exists()
+    assert Path(data_dir, "train_v2").exists()
 
     dm.setup()
     assert dm.data_train and dm.data_val and dm.data_test
     assert dm.train_dataloader() and dm.val_dataloader() and dm.test_dataloader()
 
-    num_datapoints = len(dm.data_train) + len(dm.data_val) + len(dm.data_test)
-    assert num_datapoints == 70_000
-
     batch = next(iter(dm.train_dataloader()))
-    x, y = batch
-    assert len(x) == batch_size
-    assert len(y) == batch_size
-    assert x.dtype == torch.float32
-    assert y.dtype == torch.int64
+    image, mask, label, file_id = batch
+    assert len(image) == batch_size
+    assert len(mask) == batch_size
+    assert image.dtype == torch.float32
+    assert mask.dtype == torch.float32
+    assert label.dtype == torch.int64
